@@ -1,0 +1,6 @@
+../Core/Src/main.c:22:13:platform_init	1
+../Core/Src/main.c:29:13:boot_banner	1
+../Core/Src/main.c:36:13:image_sanity_report	3
+../Core/Src/main.c:46:13:handle_boot_decision	3
+../Core/Src/main.c:68:13:bootloader_cli	5
+../Core/Src/main.c:107:5:main	1

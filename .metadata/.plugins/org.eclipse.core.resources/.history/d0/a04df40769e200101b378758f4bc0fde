@@ -1,0 +1,25 @@
+/*
+ * task_cli.c
+ *
+ *  Created on: Dec 26, 2025
+ *      Author: sande
+ */
+/* application/rtos/tasks_cli.c */
+
+#include "FreeRTOS.h"
+#include "task.h"
+#include "uart_driver.h"
+
+void task_cli(void *p)
+{
+	uart_send_str("[CLI] Ready. Type commands (stub)\r\n");
+
+    while(1)
+    {
+        // In Day-5 showcase: no parsing yet
+        // Will expand on Day-6/7
+        vTaskDelay(pdMS_TO_TICKS(2000));
+        uart_send_str("CLI> stub\r\n");
+    }
+}
+

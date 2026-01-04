@@ -1,0 +1,5 @@
+../Drivers/CMSIS/Include/core_cm4.h:1938:34:__NVIC_SystemReset	1
+../Core/Src/update_uart.c:24:6:bl_uart_recv	2
+../Core/Src/update_uart.c:33:6:bl_uart_send_str	1
+../Core/Src/update_uart.c:42:6:bl_receive_and_program_image	13
+../Core/Src/update_uart.c:148:13:mark_slot_a_pending	2

@@ -1,0 +1,61 @@
+/*
+ * task_sensors.c
+ *
+ *  Created on: Dec 27, 2025
+ *      Author: sande
+ */
+#include "task_sensors.h"
+#include "uart_threadsafe.h"
+#include "tasks_common.h"
+#include "freertos_init.h"
+
+static volatile uint32_t lastImpactTick = 0;
+
+void Sensors_Task(void *p)
+{
+
+    uprintf("[SENSORS] Task started\r\n");
+
+    sensor_event_t ev;
+
+    while(1)
+    {
+
+        if(xQueueReceive(q_sensors, &ev, portMAX_DELAY))
+        {
+        	   hb_sensor = 1; // alive for health monitor
+            switch(ev)
+            {
+                case SENSOR_PIR:
+                    uprintf("[SENS] PIR SENSOR TRIGGERED\r\n");
+                    break;
+
+                case SENSOR_IMPACT:
+                    uprintf("[SENS] IMPACT DETECTED\r\n");
+                    break;
+
+                case SENSOR_BUTTON:
+                    uprintf("[SENS] Button Press\r\n");
+                    breaK;
+                case SENSOR_TIMER_TICK:
+                    uprintf("[SENS] Timer 2 Event\r\n");
+                	breaK;
+            }
+        }
+    }
+}
+
+void Sensors_ISR_Handler(uint8_t pin)
+{
+	uint32_t now = xTaskGetTickCountFromISR();
+    sensor_event_t ev = (sensor_event_t)pin;
+    BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+    if ((now - lastImpactTick) > pdMS_TO_TICKS(50))
+       {
+           lastImpactTick = now;
+    xQueueSendFromISR(q_sensors,&ev,&xHigherPriorityTaskWoken);
+       }
+    portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+}
+
+

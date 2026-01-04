@@ -1,0 +1,30 @@
+/*
+ * tasks_common.h
+ *
+ *  Created on: Dec 27, 2025
+ *      Author: sande
+ */
+
+#ifndef INC_RTOS_TASKS_COMMON_H_
+#define INC_RTOS_TASKS_COMMON_H_
+
+
+#include "FreeRTOS.h"
+#include "task.h"
+#include "queue.h"
+#include "semphr.h"
+#include "system_events.h"
+
+// Global Queues
+extern QueueHandle_t q_sensor_events;
+extern QueueHandle_t q_oled;
+extern SemaphoreHandle_t uart_mutex;
+
+// Heartbeat flags (monitored by health task)
+extern volatile uint8_t hb_cli;
+extern volatile uint8_t hb_sensor;
+extern volatile uint8_t hb_adc;
+extern volatile uint8_t hb_oled;
+
+
+#endif /* INC_RTOS_TASKS_COMMON_H_ */

@@ -1,0 +1,84 @@
+/*
+ * oled.c
+ *
+ *  Created on: Dec 14, 2025
+ *      Author: sande
+ */
+#include "oled.h"
+#include "i2c.h"
+#include "font5x7.h"
+
+#define OLED_ADDR 0x3D
+
+static void oled_cmd(uint8_t cmd)
+{
+    uint8_t buf[2] = {0x00, cmd};
+    i2c2_write(OLED_ADDR, buf, 2);
+}
+
+static void oled_data(uint8_t data)
+{
+    uint8_t buf[2] = {0x40, data};
+    i2c2_write(OLED_ADDR, buf, 2);
+}
+
+void oled_init(void)
+{
+
+    for (volatile int i = 0; i < 100000; i++); // power-up delay
+
+    oled_cmd(0xAE); // display off
+
+    oled_cmd(0xD5); oled_cmd(0x80); // clock divide
+    oled_cmd(0xA8); oled_cmd(0x3F); // multiplex 1/64
+    oled_cmd(0xD3); oled_cmd(0x00); // display offset
+    oled_cmd(0x40);                // start line
+    oled_cmd(0x8D); oled_cmd(0x14); // charge pump ON
+    oled_cmd(0x20); oled_cmd(0x00); // horizontal addressing
+    oled_cmd(0xA1);                // segment remap
+    oled_cmd(0xC8);                // COM scan direction
+    oled_cmd(0xDA); oled_cmd(0x12); // COM pins
+    oled_cmd(0x81); oled_cmd(0x7F); // contrast
+    oled_cmd(0xD9); oled_cmd(0xF1); // pre-charge
+    oled_cmd(0xDB); oled_cmd(0x40); // vcom detect
+    oled_cmd(0xA4);                // resume RAM display
+    oled_cmd(0xA6);                // normal display
+
+    oled_cmd(0xAF); // display ON
+
+    oled_clear();
+}
+
+void oled_clear(void)
+{
+    for (int page = 0; page < 8; page++)
+    {
+        oled_cmd(0xB0 + page);
+        oled_cmd(0x00);
+        oled_cmd(0x10);
+
+        for (int col = 0; col < 128; col++)
+            oled_data(0x00);
+    }
+}
+
+void oled_print(uint8_t row, const char *str)
+{
+    oled_cmd(0xB0 + row);
+    oled_cmd(0x00);
+    oled_cmd(0x10);
+
+    while (*str)
+    {
+        char c = *str++;
+        if (c < 32 || c > 122) c = ' ';   // limit range
+
+        const uint8_t *glyph = font5x7[c - 32];
+
+        for (int i = 0; i < 5; i++)
+            oled_data(glyph[i]);
+
+        oled_data(0x00); // space between chars
+    }
+}
+

@@ -1,0 +1,15 @@
+/*
+ * task_adc.h
+ *
+ *  Created on: Dec 27, 2025
+ *      Author: sande
+ */
+
+#ifndef INC_RTOS_TASK_ADC_H_
+#define INC_RTOS_TASK_ADC_H_
+
+
+void ADC_Task(void *arg);
+void ADC_DMA_Complete_ISR(void); // future Step-5
+
+#endif /* INC_RTOS_TASK_ADC_H_ */

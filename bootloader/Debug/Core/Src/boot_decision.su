@@ -1,0 +1,2 @@
+../Core/Src/boot_decision.c:16:10:slot_base	16	static
+../Core/Src/boot_decision.c:21:17:boot_decide	24	static

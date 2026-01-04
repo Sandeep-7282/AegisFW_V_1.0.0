@@ -1,0 +1,3 @@
+../Core/Src/image_crc.c:13:17:crc32_update	3
+../Core/Src/image_crc.c:25:10:crc32_compute_flash	2
+../Core/Src/image_crc.c:36:10:crc32_compute	2

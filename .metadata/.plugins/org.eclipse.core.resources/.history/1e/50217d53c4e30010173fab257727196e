@@ -1,0 +1,18 @@
+/*
+ * freertos_init.h
+ *
+ *  Created on: Dec 26, 2025
+ *      Author: sande
+ */
+
+#ifndef INC_RTOS_FREERTOS_INIT_H_
+#define INC_RTOS_FREERTOS_INIT_H_
+
+#include "Freertos.h"
+#include "semphr.h"
+
+extern QueueHandle_t q_sensors;
+extern TaskHandle_t adcTaskHandle;
+void rtos_start(void);
+
+#endif /* INC_RTOS_FREERTOS_INIT_H_ */

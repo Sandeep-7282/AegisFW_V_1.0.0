@@ -1,0 +1,38 @@
+/*
+ * tasks_sensor.c
+ *
+ *  Created on: Dec 28, 2025
+ *      Author: sande
+ */
+#include "drivers.h"
+#include "uart.h"
+#include "FreeRTOS.h"
+#include "task.h"
+#include "stdio.h"
+
+#define FILTER_WINDOW 10
+
+void sensor_task(void *arg)
+{
+    char buf[32];
+    float avg = 0;
+    uint8_t count=0;
+
+    oled_clear();
+    oled_print(0,0,"AEGISFW 128x64 ONLINE");
+
+    while(1)
+    {
+        ulTaskNotifyTake(pdTRUE,portMAX_DELAY);
+
+        float t = convert_temp(adc_dma_buf[0]);
+        avg = avg + (t-avg) / FILTER_WINDOW;   // MOVING AVERAGE FILTER
+
+        sprintf(buf,"TEMP: %.2f C  ", avg); // @suppress("Float formatting support")
+
+        // Display formatting
+        oled_print(0,2,buf);
+    }
+}
+
+

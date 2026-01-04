@@ -1,0 +1,61 @@
+/*
+ * system_init.c
+ *
+ *  Created on: Dec 28, 2025
+ *      Author: sande
+ */
+#include "board.h"
+#include "drivers.h"
+
+void system_clock_init(void)
+{
+    /* Enable HSI */
+    RCC->CR |= RCC_CR_HSION;
+    while(!(RCC->CR & RCC_CR_HSIRDY));
+
+    /* Flash wait states for 84MHz */
+    FLASH->ACR = FLASH_ACR_ICEN | FLASH_ACR_DCEN | FLASH_ACR_LATENCY_2WS;
+
+    /* PLL Config */
+    RCC->PLLCFGR =
+        (16 << 0) |       // PLLM
+        (336 << 6) |      // PLLN
+        (0 << 16) |       // PLLP = 2
+        (7 << 24) |       // PLLQ
+        RCC_PLLCFGR_PLLSRC_HSI;
+
+    /* Enable PLL */
+    RCC->CR |= RCC_CR_PLLON;
+    while(!(RCC->CR & RCC_CR_PLLRDY));
+
+    /*
+     * Very important:
+     * Debug freeze so SWD/JTAG stays alive after clock switch
+     */
+    DBGMCU->CR |= DBGMCU_CR_DBG_SLEEP |
+                  DBGMCU_CR_DBG_STOP |
+                  DBGMCU_CR_DBG_STANDBY;
+
+    /* Prescalers */
+    RCC->CFGR =
+        RCC_CFGR_HPRE_DIV1   |   // AHB 84MHz
+        RCC_CFGR_PPRE1_DIV2  |   // APB1 42MHz (timer x2=84MHz)
+        RCC_CFGR_PPRE2_DIV1;     // APB2 84MHz
+
+    /* Switch SYSCLK → PLL */
+    RCC->CFGR &= ~RCC_CFGR_SW;
+    RCC->CFGR |= RCC_CFGR_SW_PLL;
+
+    while(((RCC->CFGR >> 2) & 3) != 2);
+}
+
+
+void board_init(void)
+{
+   //system_clock_init();
+    gpio_exti_init();
+    tim2_init();
+    adc_dma_init();
+    dwt_init();
+    oled_init();
+}

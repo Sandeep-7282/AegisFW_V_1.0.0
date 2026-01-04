@@ -1,0 +1,2 @@
+../Core/Inc/rtos/uart_threadsafe.h:18:20:uprintf	1
+../Core/Src/rtos/task_start.c:14:6:Start_Peripherals_Task	1

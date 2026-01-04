@@ -1,0 +1,16 @@
+/*
+ * I2c.h
+ *
+ *  Created on: Dec 14, 2025
+ *      Author: sande
+ */
+
+#ifndef INC_I2C_H_
+#define INC_I2C_H_
+
+#include "stm32f446xx.h"
+
+void i2c1_init(void);
+void i2c1_write(uint8_t addr, uint8_t *data, uint16_t len);
+
+#endif /* INC_I2C_H_ */

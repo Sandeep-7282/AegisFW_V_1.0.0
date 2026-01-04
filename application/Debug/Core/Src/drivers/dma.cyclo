@@ -1,0 +1,4 @@
+../Drivers/CMSIS/Include/core_cm4.h:1684:22:__NVIC_EnableIRQ	2
+../Drivers/CMSIS/Include/core_cm4.h:1814:22:__NVIC_SetPriority	2
+../Core/Src/drivers/dma.c:20:6:dma2_adc1_init	2
+../Core/Src/drivers/dma.c:67:6:DMA2_Stream0_IRQHandler	5

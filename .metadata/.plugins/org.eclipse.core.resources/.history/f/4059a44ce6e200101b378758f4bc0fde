@@ -1,0 +1,52 @@
+/*
+ * task_sensors.c
+ *
+ *  Created on: Dec 27, 2025
+ *      Author: sande
+ */
+#include "tasks_common.h"
+#include <stdio.h>
+
+
+void Sensors_Task(void *arg)
+{
+    event_msg_t evt;
+
+    printf("[SENSORS] Task started\n");
+
+    while(1)
+    {
+        hb_sensor = 1;
+
+        if(xQueueReceive(q_sensor_events, &evt, pdMS_TO_TICKS(200)))
+        {
+            switch(evt.id)
+            {
+                case EVT_BTN_PRESSED:
+                    printf("[SENSORS] Button Press Event\n");
+                    break;
+
+                case EVT_IMPACT_DETECTED:
+                    printf("[SENSORS] Impact Detected. t=%lu\n", evt.data);
+                    break;
+
+                case EVT_PIR_TRIGGERED:
+                    printf("[SENSORS] Motion Detected\n");
+                    break;
+            }
+        }
+    }
+}
+
+// IRQ entry function - used later Step-4
+void Sensors_ISR_Handler(uint16_t pin)
+{
+    event_msg_t evt = {0};
+    evt.id = EVT_BTN_PRESSED; // placeholder, later decide by pin
+
+    BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+    xQueueSendFromISR(q_sensor_events, &evt, &xHigherPriorityTaskWoken);
+    portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+}
+
+

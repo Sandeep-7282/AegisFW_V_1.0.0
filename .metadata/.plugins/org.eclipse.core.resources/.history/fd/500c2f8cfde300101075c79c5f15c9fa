@@ -1,0 +1,44 @@
+/*
+ * gpio_exti.c
+ *
+ *  Created on: Dec 28, 2025
+ *      Author: sande
+ */
+#include "stm32f446xx.h"
+#include "interrupts.h"
+
+void gpio_exti_init(void)
+{
+    RCC->AHB1ENR |= RCC_AHB1ENR_GPIOAEN | RCC_AHB1ENR_GPIOBEN | RCC_AHB1ENR_GPIOCEN;
+    RCC->APB2ENR |= RCC_APB2ENR_SYSCFGEN;
+
+    // Input mode
+    GPIOA->MODER &= ~(3<<(0*2));   // Button => PA0
+    GPIOB->MODER &= ~(3<<(1*2));   // PIR => PB1
+    GPIOC->MODER &= ~(3<<(13*2));  // Impact => PC13
+
+    // Enable pull-up
+    GPIOA->PUPDR |= (1<<(0*2));
+    GPIOB->PUPDR |= (1<<(1*2));
+    GPIOC->PUPDR |= (1<<(13*2));
+
+    // EXTICR mapping
+    SYSCFG->EXTICR[0] &= ~((0xF<<0)|(0xF<<4));
+    SYSCFG->EXTICR[0] |= (0x0<<0);      // EXTI0→PA0
+    SYSCFG->EXTICR[0] |= (0x1<<4);      // EXTI1→PB1
+
+    SYSCFG->EXTICR[3] &= ~(0xF<<4);
+    SYSCFG->EXTICR[3] |= (0x2<<4);      // EXTI13→PC13
+
+    // Rising edge (active high)
+    EXTI->RTSR |= (1<<0)|(1<<1)|(1<<13);
+    EXTI->IMR  |= (1<<0)|(1<<1)|(1<<13);
+
+    NVIC_EnableIRQ(EXTI0_IRQn);
+    NVIC_EnableIRQ(EXTI1_IRQn);
+    NVIC_EnableIRQ(EXTI15_10_IRQn);
+}
+
+
+
+

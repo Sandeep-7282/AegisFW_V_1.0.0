@@ -1,0 +1,158 @@
+#include "stm32f4xx.h"
+#include "clock.h"
+#include "uart.h"
+#include "eeprom.h"
+#include "boot_metadata.h"
+#include "boot_decision.h"
+#include "image_validate.h"
+#include "image_crc.h"
+#include "memory_map.h"
+#include "app_jump.h"
+#include "stdio.h"
+#include "string.h"
+
+
+/*------------------------------------------------------------*
+ *                GLOBAL METADATA STATE
+ *------------------------------------------------------------*/
+static boot_metadata_t meta;
+static boot_decision_t decision;
+
+
+/*------------------------------------------------------------*
+ *                 PLATFORM BRING-UP
+ *------------------------------------------------------------*/
+static void platform_init(void)
+{
+    clock_init_minimal();    // No PLL, safe & fast startup
+    uart_init();             // Debug prints now active
+    eeprom_init();           // Metadata access
+}
+
+
+/*------------------------------------------------------------*
+ *                DIAGNOSTIC & INFO PRINTS
+ *------------------------------------------------------------*/
+static void boot_banner(void)
+{
+    uart_puts("\r\n===============================\r\n");
+    uart_puts("         BOOTLOADER START     \r\n");
+    uart_puts("===============================\r\n");
+}
+
+
+/* Optional debug info */
+static void test_image_health(void)
+{
+    img_status_t a = image_validate_vector(APP_SLOT_A_BASE);
+    img_status_t b = image_validate_vector(APP_SLOT_B_BASE);
+
+    printf("Slot A vector : %s\r\n",
+                (a == IMG_OK) ? "OK" : "INVALID");
+
+    printf("Slot B vector : %s\r\n",
+                (b == IMG_OK) ? "OK" : "INVALID");
+
+    uint32_t crcA = crc32_compute_flash(APP_SLOT_A_BASE + 8U,
+                                        APP_SLOT_SIZE_BYTES - 8U);
+
+    printf("Slot A CRC32  : 0x%08lX\r\n", crcA);
+}
+
+
+/*------------------------------------------------------------*
+ *       EXECUTE DECISION RESULT (No reset inside logic)
+ *------------------------------------------------------------*/
+static void handle_boot_decision(boot_decision_t d)
+{
+    switch (d)
+    {
+        case BOOT_DECISION_BOOT:
+            uart_puts("\nBOOT DECISION : BOOT IMAGE\r\n");
+            uart_puts("Jumping to active slot...\r\n");
+            boot_jump_to_application(slot_base(meta.active_slot));
+            break;
+
+        case BOOT_DECISION_ROLLBACK:
+            uart_puts("\nBOOT DECISION : ROLLBACK\r\n");
+            uart_puts("Switching to backup slot...\r\n");
+            // active_slot already changed by boot_decide()
+            boot_metadata_store_safe(&meta);
+            boot_jump_to_application(slot_base(meta.active_slot));
+            break;
+
+        case BOOT_DECISION_STAY:
+        default:
+            uart_puts("\nBOOT DECISION : STAY IN BOOTLOADER\r\n");
+            uart_puts("Awaiting user or update...\r\n");
+            break;
+    }
+}
+
+
+/*------------------------------------------------------------*
+ *                SIMPLE UART BOOTLOADER CLI
+ *------------------------------------------------------------*/
+static void bootloader_cli(void)
+{
+    uart_puts("\nBOOTLOADER READY\r\n> ");
+
+    char cmd[32];
+    int idx = 0;
+
+    while (1)
+    {
+        char c = uart_getc();
+
+        if (c == '\r' || c == '\n')   // Command entered
+        {
+            cmd[idx] = 0;  // null terminate
+
+            if(strcmp(cmd,"reset_crca")==0){
+                meta.crcA = 0; boot_metadata_store_safe(&meta);
+                uart_puts("CRC-A cleared\n");
+            }
+
+            if(strcmp(cmd,"reset_crcb")==0){
+                meta.crcB = 0; boot_metadata_store_safe(&meta);
+                uart_puts("CRC-B cleared\n");
+            }
+
+            uart_puts("> ");
+            idx = 0;
+        }
+        else {
+            uart_putc(c);
+            if (idx < sizeof(cmd)-1) cmd[idx++] = c;
+        }
+    }
+}
+
+
+
+/*------------------------------------------------------------*
+ *                        MAIN()
+ *------------------------------------------------------------*/
+int main(void)
+{
+    platform_init();
+    boot_banner();
+    test_image_health();
+
+    /* Load or initialize metadata */
+    if (boot_metadata_load_or_init(&meta) == 0)
+    {
+        boot_metadata_dump(&meta);
+    }
+
+    /* Decide action */
+    decision = boot_decide(&meta);
+
+    /* Execute outcome */
+    handle_boot_decision(decision);
+
+    /* If we’re here → stay in CLI */
+    bootloader_cli();
+
+    return 0;
+}

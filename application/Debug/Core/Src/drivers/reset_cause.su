@@ -1,0 +1,3 @@
+../Core/Src/drivers/reset_cause.c:14:6:reset_cause_detect	16	static
+../Core/Src/drivers/reset_cause.c:50:15:reset_cause_get	4	static
+../Core/Src/drivers/reset_cause.c:55:13:reset_cause_str	16	static

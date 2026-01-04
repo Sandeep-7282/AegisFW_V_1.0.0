@@ -1,0 +1,3 @@
+../Core/Inc/rtos/uart_threadsafe.h:18:20:uprintf	16	static
+../Core/Src/rtos/task_sensors.c:19:6:Sensors_Task	24	static
+../Core/Src/rtos/task_sensors.c:63:6:Sensors_ISR_Handler	32	static,ignoring_inline_asm

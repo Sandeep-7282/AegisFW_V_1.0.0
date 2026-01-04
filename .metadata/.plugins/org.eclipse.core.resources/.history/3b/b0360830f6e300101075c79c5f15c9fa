@@ -1,0 +1,23 @@
+#include "board.h"
+#include "uart.h"
+#include "tasks.h"
+#include "FreeRTOS.h"
+#include "task.h"
+
+TaskHandle_t sensorTaskHandle;
+TaskHandle_t healthTaskHandle;
+TaskHandle_t oledTaskHandle;
+
+int main(void)
+{
+    uart_init();
+    uart_puts("\r\n==== AEGISFW - DAY 6 START ====\r\n");
+
+    board_init();
+    uart_puts("[SYS] Core Init OK\n");
+
+    xTaskCreate(sensor_task,"SENSOR",512,NULL,3,&sensorTaskHandle);
+
+    vTaskStartScheduler();
+    while(1);
+}

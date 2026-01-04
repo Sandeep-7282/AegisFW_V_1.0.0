@@ -1,0 +1,2 @@
+../Core/Src/drivers/dwt.c:10:6:dwt_init	4	static
+../Core/Src/drivers/dwt.c:17:10:dwt_get_cycle	4	static

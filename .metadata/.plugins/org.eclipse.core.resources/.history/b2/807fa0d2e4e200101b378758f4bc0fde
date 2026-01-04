@@ -1,0 +1,13 @@
+/*
+ * tasks_common.h
+ *
+ *  Created on: Dec 27, 2025
+ *      Author: sande
+ */
+
+#ifndef INC_RTOS_TASKS_COMMON_H_
+#define INC_RTOS_TASKS_COMMON_H_
+
+
+
+#endif /* INC_RTOS_TASKS_COMMON_H_ */

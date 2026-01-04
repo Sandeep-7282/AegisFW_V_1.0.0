@@ -1,0 +1,3 @@
+../Core/Inc/rtos/uart_threadsafe.h:18:20:uprintf	1
+../Core/Src/rtos/task_oled.c:21:6:OLED_Task	3
+../Core/Src/rtos/task_oled.c:60:6:OLED_PrintAsync	3

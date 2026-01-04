@@ -1,0 +1,31 @@
+/*
+ * freertos_init.c
+ *
+ *  Created on: Dec 26, 2025
+ *      Author: sande
+ */
+/* application/rtos/freertos_init.c */
+
+#include "FreeRTOS.h"
+#include "task.h"
+#include "freertos_init.h"
+#include "uart_driver.h"
+#include "gpio_driver.h"
+
+extern void task_health(void *p);
+extern void task_cli(void *p);
+
+void rtos_start(void)
+{
+	uart_send_str("\r\n[RTOS] Creating tasks...\r\n");
+
+    xTaskCreate(task_health,"HEALTH",256,NULL,3,NULL);
+    xTaskCreate(task_cli,"CLI",512,NULL,2,NULL);
+
+    uart_send_str("[RTOS] Scheduler starting...\r\n");
+    vTaskStartScheduler();
+
+    while(1); // should never reach
+}
+
+

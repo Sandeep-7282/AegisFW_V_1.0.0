@@ -1,0 +1,28 @@
+#include "board.h"
+#include "uart.h"
+#include "drivers.h"
+#include "tasks.h"
+#include "FreeRTOS.h"
+#include "task.h"
+
+TaskHandle_t sensorTaskHandle;
+
+int main(void)
+{
+    uart_init();
+    uart_puts("\r\n=== AEGISFW DAY-6 ===\r\n");
+
+    //board_init();                 // GPIO + EXTI + TIM + ADC + DMA
+    oled_init();                  // Initialize OLED before RTOS
+    oled_clear();
+    oled_print(0,0,"AegisFW Online");
+    oled_print(0,2,"Boot OK");
+    oled_print(0,0,"OLED TEST");
+    oled_print(0,2,"IF YOU SEE THIS");
+    oled_print(0,4,"DISPLAY IS OK");
+
+    xTaskCreate(sensor_task,"SENSOR",512,NULL,2,&sensorTaskHandle);
+
+    vTaskStartScheduler();
+    while(1);
+}

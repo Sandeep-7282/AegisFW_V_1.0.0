@@ -1,0 +1,25 @@
+/*
+ * cli_commands.c
+ *
+ *  Created on: Dec 26, 2025
+ *      Author: sande
+ */
+#include "cli_commands.h"
+#include "string.h"
+#include "stm32f4xx.h"
+
+void cli_commands(char* cmd){
+    if(strcmp(cmd,"reset_crca")==0){
+                meta.crcA = 0; boot_metadata_store_safe(&meta);
+                uart_puts("CRC-A cleared\n");
+            }
+
+            if(strcmp(cmd,"reset_crcb")==0){
+                meta.crcB = 0; boot_metadata_store_safe(&meta);
+                uart_puts("CRC-B cleared\n");
+            }
+            if(strcmp(cmd,"reboot")==0){
+            	NVIC_SystemReset();
+            }
+}
+

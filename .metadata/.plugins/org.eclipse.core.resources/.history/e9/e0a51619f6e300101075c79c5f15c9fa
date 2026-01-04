@@ -1,0 +1,31 @@
+/*
+ * oled_test_main.c
+ *
+ *  Created on: Dec 28, 2025
+ *      Author: sande
+ */
+#include "stm32f446xx.h"
+#include "oled_ssd1306.h"  // same file we made
+
+static void delay_ms(uint32_t ms)
+{
+    for(uint32_t i=0;i<ms*4000;i++);
+}
+
+int main(void)
+{
+    oled_init();
+    oled_clear();
+
+    while(1)
+    {
+        oled_print(0,0,"OLED TEST");
+        oled_print(0,2,"IF YOU SEE THIS");
+        oled_print(0,4,"DISPLAY IS OK");
+
+        delay_ms(5000);
+        oled_clear();
+    }
+}
+
+

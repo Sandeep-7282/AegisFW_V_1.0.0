@@ -1,0 +1,2 @@
+../Core/Src/drivers/watchdog.c:15:6:Watchdog_Init	1
+../Core/Src/drivers/watchdog.c:29:6:Watchdog_Feed	1

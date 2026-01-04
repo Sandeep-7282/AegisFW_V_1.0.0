@@ -1,0 +1,2 @@
+../Core/Src/flash_ops.c:11:17:address_to_sector	16	static
+../Core/Src/flash_ops.c:23:6:flash_erase_range	32	static

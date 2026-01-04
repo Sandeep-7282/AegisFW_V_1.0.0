@@ -1,0 +1,42 @@
+/* application/Core/main.c */
+#include "FreeRTOS.h"
+#include "task.h"
+#include "freertos_init.h"
+#include "uart_driver.h"
+#include "gpio_driver.h"
+#include "gpio_exti.h"
+#include "adc.h"
+#include "dma.h"
+#include "oled.h"
+#include "i2c.h"
+#include "system.h"
+#include "dwt.h"
+#include "timer2.h"
+
+int main(void)
+{
+
+	uart_init(115200);
+	system_init();
+	dwt_init();
+	tim2_init(10);
+	//i2c2_init();
+	//oled_init();
+//	oled_clear();
+	//oled_print(0, "OLED OK");        // must run before RTOS tasks
+
+	gpio_init_led();
+	GPIO_EXTI_Init();
+
+	adc1_init_temp_vref_dma();
+	dma2_adc1_init();
+	ADC1->CR2 |= ADC_CR2_SWSTART;   // Kick first conversion
+
+    uart_send_str("\r\n[AegisFW-APP] Boot OK\r\n");
+	rtos_start();        // Create tasks + scheduler
+       // vTaskStartScheduler inside
+
+    while(1);
+}
+
+

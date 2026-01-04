@@ -1,0 +1,21 @@
+/*
+ * system.c
+ *
+ *  Created on: Dec 27, 2025
+ *      Author: sande
+ */
+#include "system.h"
+
+void system_init(void)
+{
+    /* Enable FPU */
+    SCB->CPACR |= (0xF << 20);
+
+    /* Enable GPIO clocks if needed later */
+    RCC->AHB1ENR |= RCC_AHB1ENR_GPIOAEN;
+
+    /* Small startup delay */
+    for (volatile uint32_t i = 0; i < 100000; i++);
+}
+
+

@@ -1,0 +1,27 @@
+/*
+ * task_health.c
+ *
+ *  Created on: Dec 26, 2025
+ *      Author: sande
+ */
+/* application/rtos/tasks_health.c */
+
+#include "FreeRTOS.h"
+#include "task.h"
+#include "uart_driver.h"
+#include "gpio_driver.h"
+
+void task_health(void *p)
+{
+    uart_write("[HEALTH] Task Started\r\n");
+
+    while(1)
+    {
+        gpio_led_toggle();
+        uart_write("[HEALTH] alive\r\n");
+
+        vTaskDelay(pdMS_TO_TICKS(1000));
+    }
+}
+
+

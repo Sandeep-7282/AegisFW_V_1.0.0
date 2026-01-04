@@ -1,0 +1,15 @@
+../Drivers/CMSIS/Include/core_cm4.h:1938:34:__NVIC_SystemReset	4	static,ignoring_inline_asm
+../Core/Src/cli_commands.c:23:6:cmd_help	8	static
+../Core/Src/cli_commands.c:44:13:cmd_info	16	static
+../Core/Src/cli_commands.c:52:13:cmd_meta_dump	16	static
+../Core/Src/cli_commands.c:59:13:cmd_boot	16	static
+../Core/Src/cli_commands.c:66:13:cmd_boot_a	8	static
+../Core/Src/cli_commands.c:72:13:cmd_boot_b	8	static
+../Core/Src/cli_commands.c:80:13:cmd_crc_reset_a	16	static
+../Core/Src/cli_commands.c:87:13:cmd_crc_reset_b	16	static
+../Core/Src/cli_commands.c:94:13:cmd_switch	16	static
+../Core/Src/cli_commands.c:103:13:cmd_erase_a	8	static
+../Core/Src/cli_commands.c:109:13:cmd_erase_b	8	static
+../Core/Src/cli_commands.c:115:13:cmd_update	16	static
+../Core/Src/cli_commands.c:122:13:cmd_reboot	8	static
+../Core/Src/cli_commands.c:130:6:cli_commands	16	static

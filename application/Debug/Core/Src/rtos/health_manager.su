@@ -1,0 +1,5 @@
+../Core/Src/rtos/health_manager.c:32:6:Heartbeat_CLI	4	static
+../Core/Src/rtos/health_manager.c:33:6:Heartbeat_Sensor	4	static
+../Core/Src/rtos/health_manager.c:34:6:Heartbeat_ADC	4	static
+../Core/Src/rtos/health_manager.c:35:6:Heartbeat_OLED	4	static
+../Core/Src/rtos/health_manager.c:39:6:HealthMonitor_Task	32	static

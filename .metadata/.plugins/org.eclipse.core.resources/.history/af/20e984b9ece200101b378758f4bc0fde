@@ -1,0 +1,13 @@
+/*
+ * uart_threadsafe.h
+ *
+ *  Created on: Dec 27, 2025
+ *      Author: sande
+ */
+
+#ifndef INC_DRIVERS_UART_THREADSAFE_H_
+#define INC_DRIVERS_UART_THREADSAFE_H_
+
+
+
+#endif /* INC_DRIVERS_UART_THREADSAFE_H_ */

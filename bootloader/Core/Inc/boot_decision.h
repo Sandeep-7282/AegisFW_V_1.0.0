@@ -1,0 +1,27 @@
+/*
+ * boot_decision.h
+ *
+ *  Created on: Dec 25, 2025
+ *      Author: sande
+ */
+
+#ifndef INC_BOOT_DECISION_H_
+#define INC_BOOT_DECISION_H_
+
+#pragma once
+#include <stdint.h>
+#include <boot_metadata.h>
+
+typedef enum
+{
+    BOOT_DECISION_BOOT,
+    BOOT_DECISION_ROLLBACK,
+    BOOT_DECISION_STAY,
+	BOOT_DECISION_WAIT_FOR_UPDATE
+
+} boot_decision_t;
+
+boot_decision_t boot_decide(boot_metadata_t *meta);
+uint32_t slot_base(uint8_t slot);
+
+#endif /* INC_BOOT_DECISION_H_ */

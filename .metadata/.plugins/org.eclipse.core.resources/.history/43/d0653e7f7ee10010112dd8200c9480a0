@@ -1,0 +1,86 @@
+#include "boot_decision.h"
+#include "boot_metadata.h"
+#include "image_validate.h"
+#include "image_crc.h"
+#include "memory_map.h"
+#include "uart.h"       // Only for debug prints in bootloader
+
+#define MAX_BOOT_RETRIES   3
+
+/* Resolve flash base of current active slot */
+static uint32_t slot_base_addr(uint8_t slot)
+{
+    return (slot == SLOT_A) ? APP_SLOT_A_BASE : APP_SLOT_B_BASE;
+}
+
+boot_decision_t boot_decide(boot_metadata_t *meta)
+{
+    uint32_t base = slot_base_addr(meta->active_slot);
+
+    uart_puts("Running Boot Decision...\r\n");
+
+    /*-------------------------------------------------------------*
+     * Step-1: Validate vector table (MSP + Reset_Handler sanity)
+     *-------------------------------------------------------------*/
+    if (image_validate_vector(base) != IMG_OK)
+    {
+        uart_puts("Vector validation failed → marking slot bad\r\n");
+        meta->boot_attempts++;
+        boot_metadata_store_safe(meta);
+        return BOOT_DECISION_ROLLBACK;
+    }
+
+    /*-------------------------------------------------------------*
+     * Step-2: CRC integrity check
+     *-------------------------------------------------------------*/
+
+    uint32_t crc = crc32_compute_flash(
+                        base + 8U,                 // Skip vector table (MSP+PC)
+                        APP_SLOT_SIZE_BYTES - 8U); // CRC region
+
+    /* 2.a Initial image enrollment (first official boot of this image) */
+    if (meta->image_crc == 0)
+    {
+        uart_puts("CRC not registered → Enrolling new image...\r\n");
+
+        meta->image_crc     = crc;
+        meta->boot_attempts = 0;
+
+        /* MUST update checksum before storing */
+        meta->checksum = metadata_checksum(meta);
+
+        boot_metadata_store_safe(meta);
+        uart_puts("Enrollment complete\r\n");
+
+        return BOOT_DECISION_BOOT;
+    }
+
+    /* 2.b Compare computed CRC vs stored CRC */
+    if (crc != meta->image_crc)
+    {
+        uart_puts("CRC mismatch detected!\r\n");
+
+        meta->boot_attempts++;
+
+        if (meta->boot_attempts >= MAX_BOOT_RETRIES)
+        {
+            uart_puts("Max retries reached → Rollback required\r\n");
+            boot_metadata_store_safe(meta);
+            return BOOT_DECISION_ROLLBACK;
+        }
+
+        uart_puts("Retrying image on next boot\r\n");
+        boot_metadata_store_safe(meta);
+        return BOOT_DECISION_STAY;
+    }
+
+    /*-------------------------------------------------------------*
+     * Step-3: Image accepted as valid
+     *-------------------------------------------------------------*/
+    uart_puts("Image validated successfully\r\n");
+
+    meta->boot_attempts = 0;       // Reset retry counter
+    boot_metadata_store_safe(meta);
+
+    return BOOT_DECISION_BOOT;
+}

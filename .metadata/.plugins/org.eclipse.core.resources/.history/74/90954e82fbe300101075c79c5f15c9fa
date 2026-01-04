@@ -1,0 +1,33 @@
+/*
+ * gpio_exti.c
+ *
+ *  Created on: Dec 28, 2025
+ *      Author: sande
+ */
+#include "stm32f446xx.h"
+#include "interrupts.h"
+
+void gpio_exti_init(void)
+{
+    RCC->AHB1ENR |= (1<<0)|(1<<1)|(1<<2);
+
+    GPIOA->MODER &= ~(3<<(0*2));
+    GPIOB->MODER &= ~(3<<(1*2));
+    GPIOC->MODER &= ~(3<<(13*2));
+
+    RCC->APB2ENR |= (1<<14);
+
+    SYSCFG->EXTICR[0] |= 0<<0;
+    SYSCFG->EXTICR[0] |= 1<<4;
+    SYSCFG->EXTICR[3] |= 2<<4;
+
+    EXTI->RTSR |= (1<<0)|(1<<1)|(1<<13);
+    EXTI->IMR  |= (1<<0)|(1<<1)|(1<<13);
+
+    NVIC_EnableIRQ(EXTI0_IRQn);
+    NVIC_EnableIRQ(EXTI1_IRQn);
+    NVIC_EnableIRQ(EXTI15_10_IRQn);
+}
+
+
+

@@ -1,0 +1,123 @@
+/*
+ * boot_metadat.c
+ *
+ *  Created on: Dec 24, 2025
+ *      Author: sande
+ */
+#include "boot_metadata.h"
+#include "eeprom.h"
+#include "uart.h"
+
+static uint32_t metadata_checksum(const boot_metadata_t *m)
+{
+    const uint8_t *p = (const uint8_t *)m;
+    uint32_t sum = 0;
+
+    for (uint32_t i = 0; i < sizeof(boot_metadata_t) - sizeof(uint32_t); i++)
+    {
+        sum += p[i];
+    }
+    return sum;
+}
+
+void boot_metadata_default(boot_metadata_t *m)
+{
+    m->magic         = BOOT_METADATA_MAGIC;
+    m->version       = BOOT_METADATA_VERSION;
+    m->length        = sizeof(boot_metadata_t);
+    m->active_slot   = SLOT_A;
+    m->boot_attempts = 0;
+    m->fault_count   = 0;
+    m->image_crc     = 0;
+    m->flags         = META_FLAG_VALID;
+    m->checksum      = metadata_checksum(m);
+}
+
+static int metadata_try_load(uint16_t addr, boot_metadata_t *m)
+{
+    if (eeprom_read(addr, (uint8_t *)m, sizeof(*m)) != EEPROM_OK)
+        return -1;
+
+    if (m->magic != BOOT_METADATA_MAGIC)
+        return -1;
+
+    if (m->version != BOOT_METADATA_VERSION)
+        return -1;
+
+    if (m->length != sizeof(*m))
+        return -1;
+
+    if (m->checksum != metadata_checksum(m))
+        return -1;
+
+    return 0;
+}
+
+int boot_metadata_load_or_init(boot_metadata_t *meta)
+{
+    boot_metadata_t m0, m1;
+    int v0 = metadata_try_load(METADATA_SLOT0_ADDR, &m0);
+    int v1 = metadata_try_load(METADATA_SLOT1_ADDR, &m1);
+
+    printf("Load Slot0=%d  Slot1=%d\r\n", v0, v1);
+
+    if (v0 == 0) {
+        uart_puts("Loaded metadata from Slot0\r\n");
+        *meta = m0;
+        printf("CRC=%08lX attempts=%d\r\n", meta->image_crc, meta->boot_attempts);
+        return 0;
+    }
+
+    if (v1 == 0) {
+        uart_puts("Loaded metadata from Slot1\r\n");
+        *meta = m1;
+        printf("CRC=%08lX attempts=%d\r\n", meta->image_crc, meta->boot_attempts);
+        return 0;
+    }
+
+    uart_puts("No valid metadata found → creating default\r\n");
+    /* Neither slot valid → initialize defaults */
+    boot_metadata_default(meta);
+
+    /* Write defaults to SLOT0 only */
+    return eeprom_write(METADATA_SLOT0_ADDR,
+                         (const uint8_t *)meta,
+                         sizeof(*meta));
+}
+
+int boot_metadata_store_safe(const boot_metadata_t *meta)
+{
+    boot_metadata_t tmp;
+
+    /* Determine which slot is currently valid */
+    int slot0_valid = (metadata_try_load(METADATA_SLOT0_ADDR, &tmp) == 0);
+    int target_addr = slot0_valid ? METADATA_SLOT1_ADDR
+                                  : METADATA_SLOT0_ADDR;
+
+    /* Prepare checksum */
+    boot_metadata_t m = *meta;
+    m.checksum = metadata_checksum(&m);
+
+    /* Write to inactive slot */
+    return eeprom_write(target_addr,
+                        (const uint8_t *)&m,
+                        sizeof(m));
+}
+
+void boot_metadata_dump(const boot_metadata_t *m) {
+	uart_puts("METADATA DUMP\r\n");
+	uart_puts(" Active slot: ");
+	uart_putc(m->active_slot + 'A');
+	uart_puts("\r\n");
+	uart_puts(" Boot attempts: ");
+	uart_putc('0' + m->boot_attempts);
+	uart_puts("\r\n");
+	uart_puts(" Fault count: ");
+	uart_putc('0' + m->fault_count);
+	uart_puts("\r\n"); uart_puts(" Flags: 0x");
+	for (int i = 28; i >= 0; i -= 4) {
+		uint8_t n = (m->flags >> i) & 0xF;
+        uart_putc(n < 10 ? '0' + n : 'A' + n - 10);
+	  }
+	       uart_puts("\r\n");
+}

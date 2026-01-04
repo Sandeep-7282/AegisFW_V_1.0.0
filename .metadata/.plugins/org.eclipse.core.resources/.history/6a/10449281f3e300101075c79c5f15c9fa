@@ -1,0 +1,58 @@
+/*
+ * isr_handlers.c
+ *
+ *  Created on: Dec 28, 2025
+ *      Author: sande
+ */
+#include "interrupts.h"
+#include "stm32f446xx.h"
+
+extern void vTaskNotifyGiveFromISR(TaskHandle_t, BaseType_t*);
+
+void EXTI0_IRQHandler(void)
+{
+    uint32_t s=DWT->CYCCNT;
+
+    EXTI->PR=(1<<0);
+    BaseType_t xH=pdFALSE;
+    vTaskNotifyGiveFromISR(sensorTaskHandle,&xH);
+
+    isr_latency_log(DWT->CYCCNT-s);
+    portYIELD_FROM_ISR(xH);
+}
+
+void EXTI1_IRQHandler(void)
+{
+    EXTI->PR=(1<<1);
+    BaseType_t xH=pdFALSE;
+    vTaskNotifyGiveFromISR(sensorTaskHandle,&xH);
+
+    portYIELD_FROM_ISR(xH);
+}
+
+void EXTI15_10_IRQHandler(void)
+{
+    EXTI->PR=(1<<13);
+    BaseType_t xH=pdFALSE;
+    vTaskNotifyGiveFromISR(sensorTaskHandle,&xH);
+
+    portYIELD_FROM_ISR(xH);
+}
+
+void TIM2_IRQHandler(void)
+{
+    TIM2->SR &= ~(1<<0);
+    BaseType_t xH=pdFALSE;
+    vTaskNotifyGiveFromISR(timerTaskHandle,&xH);
+
+    portYIELD_FROM_ISR(xH);
+}
+
+void DMA2_Stream0_IRQHandler(void)
+{
+    DMA2->LIFCR |= (1<<5);
+    BaseType_t xH=pdFALSE;
+    vTaskNotifyGiveFromISR(sensorTaskHandle,&xH);
+
+    portYIELD_FROM_ISR(xH);
+}

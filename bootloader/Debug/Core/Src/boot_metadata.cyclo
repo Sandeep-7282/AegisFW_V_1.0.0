@@ -1,0 +1,8 @@
+../Core/Src/boot_metadata.c:21:10:metadata_checksum	2
+../Core/Src/boot_metadata.c:32:6:slot_is_valid	1
+../Core/Src/boot_metadata.c:37:6:boot_metadata_default	1
+../Core/Src/boot_metadata.c:51:12:metadata_try_load	6
+../Core/Src/boot_metadata.c:64:5:boot_metadata_load_or_init	12
+../Core/Src/boot_metadata.c:115:5:boot_metadata_load	1
+../Core/Src/boot_metadata.c:120:5:boot_metadata_store_safe	2
+../Core/Src/boot_metadata.c:134:6:boot_metadata_dump	2

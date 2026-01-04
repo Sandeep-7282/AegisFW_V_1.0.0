@@ -1,0 +1,91 @@
+/*
+ * gpio_exti.c
+ *
+ *  Created on: Dec 27, 2025
+ *      Author: sande
+ */
+#include "gpio_exti.h"
+#include "stm32f446xx.h"
+#include "task_sensors.h"
+
+// Helper: enable clock macro
+#define GPIO_ENABLE_PORTA  (RCC->AHB1ENR |= RCC_AHB1ENR_GPIOAEN)
+#define GPIO_ENABLE_PORTB  (RCC->AHB1ENR |= RCC_AHB1ENR_GPIOBEN)
+#define GPIO_ENABLE_PORTC  (RCC->AHB1ENR |= RCC_AHB1ENR_GPIOCEN)
+
+void GPIO_EXTI_Init(void)
+{
+    /* ================= GPIO CONFIG ================= */
+
+    GPIO_ENABLE_PORTA;
+    GPIO_ENABLE_PORTB;
+    GPIO_ENABLE_PORTC;
+
+    // PA0 -> Button
+    GPIOA->MODER &= ~(3 << (0*2)); // Input
+    GPIOA->PUPDR |=  (1 << (0*2)); // Pull-up
+
+    // PB5 -> Impact sensor
+    GPIOB->MODER &= ~(3 << (5*2));
+    GPIOB->PUPDR |=  (1 << (5*2)); // Pull-up
+
+    // PC13 -> PIR Sensor
+    GPIOC->MODER &= ~(3 << (13*2));
+    GPIOC->PUPDR |=  (1 << (13*2)); // Pull-up
+
+    /* ================= SYSCFG EXTI MAP ================= */
+    RCC->APB2ENR |= RCC_APB2ENR_SYSCFGEN;
+
+    // PA0 -> EXTI0
+    SYSCFG->EXTICR[0] &= ~SYSCFG_EXTICR1_EXTI0;
+
+    // PB5 -> EXTI5
+    SYSCFG->EXTICR[1] &= ~SYSCFG_EXTICR2_EXTI5;
+    SYSCFG->EXTICR[1] |=  SYSCFG_EXTICR2_EXTI5_PB;
+
+    // PC13 -> EXTI13
+    SYSCFG->EXTICR[3] &= ~SYSCFG_EXTICR4_EXTI13;
+    SYSCFG->EXTICR[3] |=  SYSCFG_EXTICR4_EXTI13_PC;
+
+    /* ================= EXTI LINES ================= */
+    EXTI->IMR  |= (1<<0) | (1<<5) | (1<<13);
+    EXTI->RTSR |= (1<<0) | (1<<5) | (1<<13); // rising edges
+    EXTI->FTSR &= ~((1<<0)|(1<<5)|(1<<13)); // disable falling if not needed
+
+    /* ================= NVIC ================= */
+    NVIC_EnableIRQ(EXTI0_IRQn);
+    NVIC_EnableIRQ(EXTI9_5_IRQn);
+    NVIC_EnableIRQ(EXTI15_10_IRQn);
+}
+
+// IRQ handlers
+void EXTI0_IRQHandler(void)
+{
+    if(EXTI->PR & (1<<0))
+    {
+    	 EXTI->PR = (1<<0);
+        Sensors_ISR_Handler(0);
+    }
+}
+
+void EXTI9_5_IRQHandler(void)
+{
+    if(EXTI->PR & (1<<5))
+    {
+    	 EXTI->PR = (1<<5);
+        Sensors_ISR_Handler(5);
+
+    }
+}
+
+void EXTI15_10_IRQHandler(void)
+{
+    if(EXTI->PR & (1<<13))
+    {
+        EXTI->PR = (1<<13);
+        Sensors_ISR_Handler(13);
+
+    }
+}
+
+

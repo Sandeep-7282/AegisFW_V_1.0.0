@@ -1,0 +1,53 @@
+/*
+ * task_sensors.c
+ *
+ *  Created on: Dec 27, 2025
+ *      Author: sande
+ */
+#include "task_sensors.h"
+#include "uart_threadsafe.h"
+
+QueueHandle_t q_sensors;        // Global queue handle
+
+volatile uint8_t hb_sensor = 0; // heartbeat flag
+
+void Sensor_Task(void *p)
+{
+    q_sensors = xQueueCreate(10, sizeof(sensor_event_t));
+    uprintf("[SENSORS] Task started\r\n");
+
+    sensor_event_t ev;
+
+    while(1)
+    {
+        hb_sensor = 1; // alive for health monitor
+
+        if(xQueueReceive(q_sensors, &ev, portMAX_DELAY))
+        {
+            switch(ev)
+            {
+                case SENSOR_PIR:
+                    uprintf("[SENS] PIR SENSOR TRIGGERED\r\n");
+                    break;
+
+                case SENSOR_IMPACT:
+                    uprintf("[SENS] IMPACT DETECTED\r\n");
+                    break;
+
+                case SENSOR_BUTTON:
+                    uprintf("[SENS] BUTTON PRESS\r\n");
+                    break;
+            }
+        }
+    }
+}
+
+void Sensors_ISR_Handler(uint8_t pin)
+{
+    sensor_event_t ev = (sensor_event_t)pin;
+    BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+    xQueueSendFromISR(q_sensors,&ev,&xHigherPriorityTaskWoken);
+    portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+}
+
+

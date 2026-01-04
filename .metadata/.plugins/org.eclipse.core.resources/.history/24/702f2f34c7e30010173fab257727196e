@@ -1,0 +1,28 @@
+/*
+ * task_sensors.h
+ *
+ *  Created on: Dec 27, 2025
+ *      Author: sande
+ */
+
+#ifndef INC_RTOS_TASK_SENSORS_H_
+#define INC_RTOS_TASK_SENSORS_H_
+
+#pragma once
+#include "FreeRTOS.h"
+#include "queue.h"
+#include <stdint.h>
+
+typedef enum {
+    SENSOR_PIR = 0,
+    SENSOR_IMPACT = 5,
+    SENSOR_BUTTON = 13,
+	SENSOR_TIMER_TICK
+} sensor_event_t;
+
+extern QueueHandle_t q_sensors;
+
+void Sensors_Task(void *p);
+void Sensors_ISR_Handler(uint8_t pin);    // called from EXTI
+
+#endif /* INC_RTOS_TASK_SENSORS_H_ */

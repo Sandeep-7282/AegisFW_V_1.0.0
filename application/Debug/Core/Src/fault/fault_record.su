@@ -1,0 +1,2 @@
+../Core/Src/fault/fault_record.c:18:6:fault_record_is_valid	4	static
+../Core/Src/fault/fault_record.c:23:6:fault_record_clear	8	static

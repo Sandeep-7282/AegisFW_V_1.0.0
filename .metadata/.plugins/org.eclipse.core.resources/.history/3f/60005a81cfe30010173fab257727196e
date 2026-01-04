@@ -1,0 +1,25 @@
+/*
+ * task_start.c
+ *
+ *  Created on: Dec 27, 2025
+ *      Author: sande
+ */
+#include "timer2.h"
+#include "uart_threadsafe.h"
+#include "FreeRTOS.h"
+#include "task.h"
+#include "adc.h"
+
+void Start_Peripherals_Task(void *arg)
+{
+    vTaskDelay(pdMS_TO_TICKS(500));  // allow system setup first
+
+    tim2_init(10);   // now safe
+    ADC1->CR2 |= ADC_CR2_SWSTART;
+
+    uprintf("[SYS] TIM2 started\n");
+
+    vTaskDelete(NULL);
+}
+
+

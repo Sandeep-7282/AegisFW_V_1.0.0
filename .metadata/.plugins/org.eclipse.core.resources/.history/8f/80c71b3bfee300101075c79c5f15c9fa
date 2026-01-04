@@ -1,0 +1,27 @@
+#include "drivers.h"
+#include "uart.h"
+#include "FreeRTOS.h"
+#include "task.h"
+#include <stdio.h>
+
+float avg = 0;
+
+void sensor_task(void *param)
+{
+    uint32_t notif;
+
+    uart_puts("Sensor Task Active\r\n");
+
+    while(1)
+    {
+        notif = ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
+
+        if(notif > 0)
+        {
+            if(GPIOA->IDR & (1<<0)) uart_puts("IMPACT SENSOR TRIGGERED\r\n");
+            if(GPIOB->IDR & (1<<1)) uart_puts("PIR MOTION DETECTED\r\n");
+            if(GPIOC->IDR & (1<<13)) uart_puts("BUTTON PRESSED\r\n");
+        }
+    }
+}
+

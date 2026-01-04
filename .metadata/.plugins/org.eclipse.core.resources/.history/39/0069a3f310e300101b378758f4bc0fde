@@ -1,0 +1,64 @@
+/*
+ * task_sensors.c
+ *
+ *  Created on: Dec 27, 2025
+ *      Author: sande
+ */
+#include "tasks_common.h"
+#include "uart_threadsafe.h"
+
+static volatile uint32_t lastImpactTick = 0;
+
+void Sensors_Task(void *arg)
+{
+    event_msg_t evt;
+
+    uprintf("[SENSORS] Task started\n");
+
+    while(1)
+    {
+        hb_sensor = 1;
+
+        if(xQueueReceive(q_sensor_events, &evt, pdMS_TO_TICKS(200)))
+        {
+            switch(evt.id)
+            {
+                case EVT_BTN_PRESSED:
+                    uprintf("[SENSORS] Button Press Event\n");
+                    break;
+
+                case EVT_IMPACT_DETECTED:
+                    uprintf("[SENSORS] Impact Detected. t=%lu\n", evt.data);
+                    break;
+
+                case EVT_PIR_TRIGGERED:
+                   uprintf("[SENSORS] Motion Detected\n");
+                    break;
+                default:
+				 uprintf("No Task Detected\n");
+            }
+        }
+        vTaskDelay(pdMS_TO_TICKS(200));
+    }
+}
+
+void Sensors_ISR_Handler(uint16_t pin)
+{
+    event_msg_t evt;
+    uint32_t now = xTaskGetTickCountFromISR();
+    if(pin==0)      evt.id = EVT_BTN_PRESSED;
+    else if(pin==5) evt.id = EVT_IMPACT_DETECTED;
+    else if(pin==13)evt.id = EVT_PIR_TRIGGERED;
+    else return;
+
+    BaseType_t hpw = 0;
+    if ((now - lastImpactTick) > pdMS_TO_TICKS(50))
+           {
+               lastImpactTick = now;
+    xQueueSendFromISR(q_sensor_events,&evt,&hpw);
+           }
+    portYIELD_FROM_ISR(hpw);
+}
+
+
+

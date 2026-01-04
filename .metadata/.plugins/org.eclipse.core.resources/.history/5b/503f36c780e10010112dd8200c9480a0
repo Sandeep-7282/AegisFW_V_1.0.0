@@ -1,0 +1,141 @@
+#include "stm32f4xx.h"
+#include "clock.h"
+#include "uart.h"
+#include "stdint.h"
+#include "stdio.h"
+#include "eeprom.h"
+#include "boot_metadata.h"
+#include "boot_decision.h"
+#include "image_validate.h"
+#include "memory_map.h"
+#include "image_crc.h"
+#include "app_jump.h"
+
+boot_metadata_t meta;
+boot_decision_t decision;
+
+static void platform_init(void)
+{
+    clock_init_minimal();
+    uart_init();
+    eeprom_init();
+}
+
+//static uint32_t boot_read_reset_cause(void) {
+//	uint32_t csr = RCC->CSR; /* Clear reset flags for next reset */
+//RCC->CSR |= RCC_CSR_RMVF; return csr;
+//}
+
+static void boot_diagnostics(void)
+{
+    uart_puts("\r\nBOOTLOADER START\r\n");
+
+   // uint32_t reset_cause = boot_read_reset_cause();
+   // boot_print_reset_cause(reset_cause);
+}
+
+static int boot_metadata_init_and_load(boot_metadata_t *meta)
+{
+    if (boot_metadata_load_or_init(meta) != 0)
+    {
+        uart_puts("METADATA ERROR\r\n");
+        return -1;
+    }
+
+    uart_puts("METADATA OK\r\n");
+    return 0;
+}
+
+static void boot_decision_stage(boot_decision_t decision){
+	switch (decision)
+	{
+	case BOOT_DECISION_BOOT:
+	    uart_puts("BOOT DECISION: BOOT IMAGE\r\n");
+	    uart_puts("BOOT: Jumping to application...\r\n");
+	    boot_jump_to_application(slot_base_addr(meta->active_slot));
+	    break;
+
+	case BOOT_DECISION_ROLLBACK:
+	    uart_puts("BOOT DECISION: ROLLBACK\r\n");
+	    uart_puts("BOOT: Rolling back to other slot...\r\n");
+	    meta->active_slot = (meta->active_slot == SLOT_A) ? SLOT_B : SLOT_A;
+	    boot_metadata_store_safe(&meta);
+	    uart_puts("Reboot required.\r\n");
+	    break;
+
+	case BOOT_DECISION_STAY:
+	default:
+	    uart_puts("BOOT DECISION: STAY IN BOOTLOADER\r\n");
+	    uart_puts("BOOT: Staying in Bootloader.\r\n");
+	    break;
+	}
+}
+
+static void boot_cli_loop(void)
+{
+    uart_puts("BOOTLOADER READY\r\n> ");
+
+    while (1)
+    {
+        char c = uart_getc();
+        uart_putc(c);
+    }
+}
+
+static const char *img_status_str(img_status_t st)
+{
+    switch (st)
+    {
+        case IMG_OK:               return "OK";
+        case IMG_ERR_ZERO_VECTOR:  return "ZERO_VECTOR";
+        case IMG_ERR_MSP_RANGE:    return "MSP_RANGE";
+        case IMG_ERR_MSP_ALIGN:    return "MSP_ALIGN";
+        case IMG_ERR_RESET_RANGE:  return "RESET_RANGE";
+        case IMG_ERR_RESET_THUMB:  return "RESET_THUMB";
+        default:                   return "UNKNOWN";
+    }
+}
+
+void bootloader_test_vector_validation(void)
+{
+    img_status_t a = image_validate_vector(APP_SLOT_A_BASE);
+    img_status_t b = image_validate_vector(APP_SLOT_B_BASE);
+
+    printf("Slot A vector: %s\r\n", img_status_str(a));
+    printf("Slot B vector: %s\r\n", img_status_str(b));
+}
+
+void bootloader_crc_test(void)
+{
+    uint32_t crc;
+
+    crc = crc32_compute_flash(
+        APP_SLOT_A_BASE + 8U,
+        APP_SLOT_SIZE_BYTES - 8U
+    );
+
+    printf("Slot A CRC32: 0x%08lX\r\n", crc);
+}
+
+int main(void)
+{
+    platform_init();
+    bootloader_test_vector_validation();
+    bootloader_crc_test();
+    boot_diagnostics();
+
+    boot_metadata_load_or_init(&meta);
+    if (boot_metadata_init_and_load(&meta) == 0)
+    {
+        boot_metadata_dump(&meta);
+    }
+
+    decision = boot_decide(&meta);
+    boot_decision_stage(decision);
+    boot_cli_loop();
+
+    while(1){
+    	char c=uart_getc();
+    	uart_putc(c);
+    }
+}

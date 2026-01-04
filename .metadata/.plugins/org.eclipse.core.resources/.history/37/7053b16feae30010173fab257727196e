@@ -1,0 +1,52 @@
+/*
+ * app_jump.c
+ *
+ *  Created on: Dec 25, 2025
+ *      Author: sande
+ */
+#include "app_jump.h"
+#include "uart.h"
+#include "stm32f4xx.h"   // or core_cm4.h for SCB/SysTick definitions
+
+void boot_jump_to_application(uint32_t app_base)
+{
+    uart_puts("JUMP: Preparing to transfer control...\r\n");
+
+    uint32_t app_msp   = *(volatile uint32_t *)(app_base + 0x00);
+    uint32_t app_reset = *(volatile uint32_t *)(app_base + 0x04);
+
+    uart_puts("JUMP: Vector table loaded\r\n");
+
+    /* Step 1: Disable all interrupts */
+    __disable_irq();
+
+    /* Step 2: Stop SysTick */
+    SysTick->CTRL = 0;
+
+    /* Step 3: Clear interrupt pending flags */
+     for(uint8_t i = 0; i < 8; i++)
+         NVIC->ICER[i] = 0xFFFFFFFF;   // Disable IRQs
+     for(uint8_t i = 0; i < 8; i++)
+         NVIC->ICPR[i] = 0xFFFFFFFF;   // Clear pending IRQs
+
+     /* Step 4: Remap vector table */
+     SCB->VTOR = app_base;
+
+    /* Step 3: Set MSP */
+    __set_MSP(app_msp);
+
+
+
+    __DSB(); __ISB();
+
+    uart_puts("JUMP: Entering application...\r\n");
+
+    /* Step 5: Jump (must not return) */
+    void (*app_entry)(void) = (void (*)(void))app_reset;
+    app_entry();
+
+    /* Should never reach here */
+    while (1) {}
+}
+
+

@@ -1,0 +1,51 @@
+/*
+ * isr_handlers.c
+ *
+ *  Created on: Dec 28, 2025
+ *      Author: sande
+ */
+#include "interrupts.h"
+#include "stm32f446xx.h"
+
+extern void vTaskNotifyGiveFromISR(TaskHandle_t, BaseType_t*);
+
+#include "interrupts.h"
+#include "uart.h"
+#include "stm32f446xx.h"
+
+void EXTI0_IRQHandler(void)    // BUTTON
+{
+    EXTI->PR=(1<<0);
+    uart_puts("[IRQ] BUTTON PRESS\r\n");
+}
+
+void EXTI1_IRQHandler(void)    // PIR
+{
+    EXTI->PR=(1<<1);
+    uart_puts("[IRQ] PIR DETECTED\r\n");
+}
+
+void EXTI15_10_IRQHandler(void) // IMPACT sensor
+{
+    EXTI->PR=(1<<13);
+    uart_puts("[IRQ] IMPACT DETECTED\r\n");
+}
+
+
+void TIM2_IRQHandler(void)
+{
+    TIM2->SR &= ~(1<<0);
+    BaseType_t xH=pdFALSE;
+    vTaskNotifyGiveFromISR(timerTaskHandle,&xH);
+
+    portYIELD_FROM_ISR(xH);
+}
+
+void DMA2_Stream0_IRQHandler(void)
+{
+    DMA2->LIFCR |= (1<<5);
+    BaseType_t xH=pdFALSE;
+    vTaskNotifyGiveFromISR(sensorTaskHandle,&xH);
+
+    portYIELD_FROM_ISR(xH);
+}

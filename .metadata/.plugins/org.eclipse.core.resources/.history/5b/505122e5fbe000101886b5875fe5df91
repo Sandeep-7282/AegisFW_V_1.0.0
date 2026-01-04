@@ -1,0 +1,43 @@
+/*
+ * boot_decision.c
+ *
+ *  Created on: Dec 25, 2025
+ *      Author: sande
+ */
+#include "boot_decision.h"
+#include "image_validate.h"
+#include "image_crc.h"
+#include "image_metadata.h"
+#include "memory_map.h"
+
+boot_decision_t boot_decide(void)
+{
+    uint32_t slot_base = metadata_active_slot() == SLOT_A
+                         ? APP_SLOT_A_BASE
+                         : APP_SLOT_B_BASE;
+
+    if (image_validate_vector(slot_base) != IMG_OK)
+    {
+        metadata_mark_invalid();
+        return BOOT_DECISION_ROLLBACK;
+    }
+
+    uint32_t crc = crc32_compute_flash(
+                        slot_base + 8,
+                        APP_SLOT_SIZE_BYTES - 8);
+
+    if (crc != metadata_expected_crc())
+    {
+        metadata_inc_boot_attempts();
+
+        if (metadata_boot_attempts() >= MAX_RETRIES)
+            return BOOT_DECISION_ROLLBACK;
+
+        return BOOT_DECISION_STAY;
+    }
+
+    metadata_clear_boot_attempts();
+    return BOOT_DECISION_BOOT;
+}
+
+

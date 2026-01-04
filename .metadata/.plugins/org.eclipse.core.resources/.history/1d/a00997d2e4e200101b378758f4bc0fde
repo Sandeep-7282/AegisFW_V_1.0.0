@@ -1,0 +1,47 @@
+/*
+ * task_cli.c
+ *
+ *  Created on: Dec 26, 2025
+ *      Author: sande
+ */
+/* application/rtos/tasks_cli.c */
+
+#include "FreeRTOS.h"
+#include "task.h"
+#include "uart_driver.h"
+#include "stdio.h"
+
+static void cli_sysinfo(void)
+{
+    char buffer[128];
+
+    snprintf(buffer,128, "\r\n[SYSINFO]\r\n"
+        "Free Heap     : %u bytes\r\n"
+        "Task Count    : %lu\r\n"
+        "-------------\r\n",
+        xPortGetFreeHeapSize(),
+        uxTaskGetNumberOfTasks()
+    );
+    uart_send_str(buffer);
+}
+
+void task_cli(void *p)
+{
+	uart_send_str("[CLI] Ready. Type commands (stub)\r\n");
+
+	char input = 0;
+
+	while(1)
+	{
+	    if(uart_rx_available())      // add basic non-blocking RX function later Day-6
+	    {
+	        input = uart_read();
+	        if(input == 'i') cli_sysinfo();
+	    }
+
+	    uart_send_str("CLI> press 'i' for sysinfo\r\n");
+	    vTaskDelay(pdMS_TO_TICKS(2000));
+	}
+
+}
+

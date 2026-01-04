@@ -1,0 +1,26 @@
+/*
+ * task_oled.c
+ *
+ *  Created on: Dec 28, 2025
+ *      Author: sande
+ */
+#include "drivers.h"
+#include "FreeRTOS.h"
+#include "task.h"
+#include "stdio.h"
+
+void oled_task(void *arg)
+{
+    float last=0;
+
+    for(;;)
+    {
+        vTaskDelay(pdMS_TO_TICKS(500));
+        char b[20];
+        sprintf(b,"TEMP:%0.2f",last);
+        oled_print(0,0,b);
+    }
+}
+
+
+

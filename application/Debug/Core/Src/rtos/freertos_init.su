@@ -1,0 +1,1 @@
+../Core/Src/rtos/freertos_init.c:54:6:rtos_start	64	static,ignoring_inline_asm

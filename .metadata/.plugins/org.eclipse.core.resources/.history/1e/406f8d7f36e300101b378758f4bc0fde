@@ -1,0 +1,50 @@
+/*
+ * task_adc.c
+ *
+ *  Created on: Dec 27, 2025
+ *      Author: sande
+ */
+#include "tasks_common.h"
+#include "task_adc.h"
+#include "uart_threadsafe.h"
+#include "stdio.h"
+#include "adc.h"
+#include "dma.h"
+#include "FreeRTOS.h"
+#include "task.h"
+
+void ADC_Task(void *arg)
+{
+    adcTaskHandle = xTaskGetCurrentTaskHandle();
+
+
+    for (;;)
+    {
+    	hb_adc=1;
+        ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
+
+        uint16_t temp_raw = adc_dma_buffer[0];
+        uint16_t vref_raw = adc_dma_buffer[1];
+
+        float vref = adc_compute_vref(vref_raw);
+        float temp = adc_compute_temperature(temp_raw, vref);
+
+        uprintf("[TEMP] %.2f C  rawT=%u rawV=%u\r\n",
+                temp, temp_raw, vref_raw);
+    }
+}
+
+
+void ADC_DMA_Complete_ISR(void)        // Called from DMA IRQ
+{
+    extern volatile uint16_t adc_dma_buffer[];
+
+    adc_sample_t sample;
+    sample.temp_raw = adc_dma_buffer[0];
+    sample.vref_raw = adc_dma_buffer[1];
+
+    BaseType_t hp = pdFALSE;
+    vTaskNotifyGiveFromISR(adcTaskHandle, &hp);
+    portYIELD_FROM_ISR(hp);
+}
+

@@ -1,0 +1,140 @@
+#include "stm32f4xx.h"
+#include "clock.h"
+#include "uart.h"
+#include "eeprom.h"
+#include "boot_metadata.h"
+#include "boot_decision.h"
+#include "cli_commands.h"
+#include "image_validate.h"
+#include "image_crc.h"
+#include "memory_map.h"
+#include "app_jump.h"
+#include <stdio.h>
+#include <string.h>
+
+/*------------------------------------------------------------*
+ *  GLOBAL METADATA & DECISION STATE
+ *------------------------------------------------------------*/
+static boot_metadata_t meta;
+static boot_decision_t decision;
+
+/*------------------------------------------------------------*
+ *  PLATFORM INIT
+ *------------------------------------------------------------*/
+static void platform_init(void)
+{
+    clock_init_minimal();    // safe minimal clock bring up
+    uart_init();             // enable serial output
+    eeprom_init();           // allow metadata
+}
+
+/*------------------------------------------------------------*
+ *  BOOT BANNER
+ *------------------------------------------------------------*/
+static void boot_banner(void)
+{
+    uart_puts("\r\n====================================\r\n");
+    uart_puts("            AEGIS BOOTLOADER        \r\n");
+    uart_puts("====================================\r\n");
+}
+
+/*------------------------------------------------------------*
+ *  DIAGNOSTICS (Optional)
+ *------------------------------------------------------------*/
+static void test_image_health(void)
+{
+    img_status_t a = image_validate_vector(APP_SLOT_A_BASE);
+    img_status_t b = image_validate_vector(APP_SLOT_B_BASE);
+
+    uart_printf("Slot A Vector : %s\r\n", (a==IMG_OK)?"OK":"INVALID");
+    uart_printf("Slot B Vector : %s\r\n", (b==IMG_OK)?"OK":"INVALID");
+
+    uart_printf("Slot A CRC32  : 0x%08lX\r\n",
+                crc32_compute_flash(APP_SLOT_A_BASE + 8,
+                                    APP_SLOT_SIZE_BYTES-8));
+}
+
+/*------------------------------------------------------------*
+ *  BOOT DECISION HANDLER
+ *------------------------------------------------------------*/
+static void handle_boot_decision(boot_decision_t d)
+{
+    switch(d)
+    {
+        case BOOT_DECISION_BOOT:
+            uart_puts("Booting ACTIVE slot...\r\n");
+            boot_jump_to_application(slot_base(meta.active_slot));
+            break;
+
+        case BOOT_DECISION_ROLLBACK:
+            uart_puts("Performing fallback → switching slot\r\n");
+            boot_metadata_store_safe(&meta);
+            boot_jump_to_application(slot_base(meta.active_slot));
+            break;
+
+        case BOOT_DECISION_STAY:
+        default:
+            uart_puts("Staying in Bootloader (manual control)\r\n");
+            break;
+    }
+}
+
+/*------------------------------------------------------------*
+ *  UART COMMAND INTERFACE
+ *------------------------------------------------------------*/
+static void bootloader_cli(void)
+{
+    char cmd[64];
+    int idx=0;
+
+    uart_puts("\r\n--- Bootloader CLI Commands ---\r\n");
+    cmd_help();
+    uart_puts("Press ENTER to boot application.\r\n");
+    uart_puts("Type 'help' for command list.\r\n\n> ");
+
+    while(1)
+    {
+        char c = uart_getc();
+
+        if(c=='\r' || c=='\n')
+        {
+            cmd[idx]=0;   // finalize buffer
+
+            if(idx==0)    // ENTER pressed → boot attempt
+            {
+                /* Decision from bootloader state */
+                decision = boot_decide(&meta);
+                handle_boot_decision(decision);
+            }
+            else
+            {
+                cli_commands(cmd,&meta);  // PROCESS COMMANDS
+            }
+
+            idx=0;
+            uart_puts("\n> ");
+        }
+        else {
+            uart_putc(c);
+            if(idx < sizeof(cmd)-1) cmd[idx++]=c;
+        }
+    }
+}
+
+/*------------------------------------------------------------*
+ *                      MAIN ENTRY
+ *------------------------------------------------------------*/
+int main(void)
+{
+    platform_init();
+    boot_banner();
+    test_image_health();
+
+    /* Load metadata from EEPROM */
+    boot_metadata_load_or_init(&meta);
+    boot_metadata_dump(&meta);
+    /* Enter CLI mode (user optionally boots) */
+    bootloader_cli();
+
+    return 0; // should never reach here
+}

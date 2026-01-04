@@ -1,0 +1,19 @@
+/*
+ * oled.h
+ *
+ *  Created on: Dec 14, 2025
+ *      Author: sande
+ */
+
+#ifndef INC_OLED_H_
+#define INC_OLED_H_
+
+#include "stdint.h"
+#include "stdbool.h"
+
+void oled_init(void);
+void oled_clear(void);
+void oled_print(uint8_t row, const char *str);
+bool oled_is_present(void);
+
+#endif /* INC_OLED_H_ */

@@ -1,0 +1,4 @@
+../Core/Src/flash_if.c:9:13:flash_unlock	2
+../Core/Src/flash_if.c:18:13:flash_lock	1
+../Core/Src/flash_if.c:23:6:flash_erase_slot_a	5
+../Core/Src/flash_if.c:56:6:flash_program_buffer	6

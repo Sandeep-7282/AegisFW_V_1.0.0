@@ -1,0 +1,69 @@
+/*
+ * dma.c
+ *
+ *  Created on: Dec 14, 2025
+ *      Author: sande
+ */
+#include "dma.h"
+#include "task_adc.h"
+#include "dwt.h"
+#include "FreeRTOS.h"
+#include "task.h"
+#include "uart_threadsafe.h"
+#include "task_adc.h"
+#include "stdio.h"
+
+volatile uint16_t adc_dma_buffer[ADC_DMA_BUF_LEN];
+
+void dma2_adc1_init(void)
+{
+    /* Enable DMA2 clock */
+    RCC->AHB1ENR |= RCC_AHB1ENR_DMA2EN;
+
+    /* Disable stream before config */
+    DMA2_Stream0->CR &= ~DMA_SxCR_EN;
+    while (DMA2_Stream0->CR & DMA_SxCR_EN);
+
+    /* Peripheral address = ADC data register */
+    DMA2_Stream0->PAR = (uint32_t)&ADC1->DR;
+
+    /* Memory address */
+    DMA2_Stream0->M0AR = (uint32_t)adc_dma_buffer;
+
+    /* Number of transfers */
+    DMA2_Stream0->NDTR = ADC_DMA_BUF_LEN;
+
+    /* Configure DMA stream */
+    DMA2_Stream0->CR =
+          (0 << DMA_SxCR_CHSEL_Pos) |   /* Channel 0 */
+          DMA_SxCR_PL_1              |   /* High priority */
+          DMA_SxCR_MSIZE_0           |   /* Memory: 16-bit */
+          DMA_SxCR_PSIZE_0           |   /* Peripheral: 16-bit */
+          DMA_SxCR_MINC              |   /* Memory increment */
+          DMA_SxCR_CIRC              |   /* Circular mode */
+          DMA_SxCR_TCIE;              |   /* Transfer complete IRQ */
+
+    NVIC_SetPriority(DMA2_Stream0_IRQn, 7);
+    NVIC_EnableIRQ(DMA2_Stream0_IRQn);
+}
+
+void DMA2_Stream0_IRQHandler(void)
+{
+    uint32_t start = dwt_get_cycle();
+
+    if(DMA2->LISR & DMA_LISR_TCIF0)
+    {
+        DMA2->LIFCR |= DMA_LIFCR_CTCIF0;
+
+        BaseType_t hp = pdFALSE;
+        if(adcTaskHandle)                           // safe wake
+            vTaskNotifyGiveFromISR(adcTaskHandle, &hp);
+
+        portYIELD_FROM_ISR(hp);
+    }
+
+    printf("[ISR] DMA latency = %lu cycles\n", dwt_get_cycle() - start);
+}
+
+
+

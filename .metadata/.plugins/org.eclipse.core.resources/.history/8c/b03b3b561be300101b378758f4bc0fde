@@ -1,0 +1,54 @@
+/*
+ * task_health.c
+ *
+ *  Created on: Dec 26, 2025
+ *      Author: sande
+ */
+/* application/rtos/tasks_health.c */
+
+#include "FreeRTOS.h"
+#include "task.h"
+#include "uart_driver.h"
+#include "gpio_driver.h"
+#include "stdio.h"
+#include "tasks_common.h"
+#include "uart_threadsafe.h"
+
+void HealthMonitor_Task(void *p)
+{
+    uprintf("[HEALTH] Task started\r\n");
+
+    while(1)
+    {
+        vTaskDelay(pdMS_TO_TICKS(5000));     // every 5 sec check
+
+        bool fault = false;
+
+        if(hb_cli == 0) {
+            uprintf("[HEALTH] CLI Task not alive\r\n");
+            fault = true;
+        }
+        if(hb_sensor == 0) {
+            uprintf("[HEALTH] SENSOR Task not alive\r\n");
+            fault = true;
+        }
+        if(hb_adc == 0) {
+            uprintf("[HEALTH] ADC Task not alive\r\n");
+            fault = true;
+        }
+        if(hb_oled == 0) {
+            uprintf("[HEALTH] OLED Task not alive\r\n");
+            fault = true;
+        }
+
+        if(!fault) {
+            uprintf("[HEALTH] All tasks healthy\r\n");
+        }
+
+        /* reset heartbeats for next window */
+        hb_cli = hb_sensor = hb_adc = hb_oled = 0;
+    }
+}
+
+
+

@@ -1,0 +1,28 @@
+/*
+ * task_oled.h
+ *
+ *  Created on: Dec 27, 2025
+ *      Author: sande
+ */
+#include "tasks_common.h"
+#include <stdio.h>
+
+void OLED_Task(void *arg)
+{
+    event_msg_t msg;
+
+    printf("[OLED] Task started\n");
+
+    while(1)
+    {
+        hb_oled = 1;
+
+        if(xQueueReceive(q_oled, &msg, 100))
+        {
+            // Step-7: push to OLED display
+            printf("[OLED] Update event id=%d\n", msg.id);
+        }
+    }
+}
+
+

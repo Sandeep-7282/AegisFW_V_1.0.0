@@ -1,0 +1,13 @@
+../Drivers/CMSIS/Include/core_cm4.h:1684:22:__NVIC_EnableIRQ	16	static,ignoring_inline_asm
+../Drivers/CMSIS/Include/core_cm4.h:1814:22:__NVIC_SetPriority	16	static
+../Core/Src/drivers/uart_driver.c:27:13:uart_gpio_init	4	static
+../Core/Src/drivers/uart_driver.c:43:13:uart_core_init	16	static
+../Core/Src/drivers/uart_driver.c:60:6:uart_init	16	static
+../Core/Src/drivers/uart_driver.c:72:6:uart_send_byte	16	static
+../Core/Src/drivers/uart_driver.c:78:6:uart_send_str	16	static
+../Core/Src/drivers/uart_driver.c:90:5:uart_rx_available	4	static
+../Core/Src/drivers/uart_driver.c:96:6:uart_read	16	static
+../Core/Src/drivers/uart_driver.c:106:6:uart_read_nonblock	4	static
+../Core/Src/drivers/uart_driver.c:114:9:uart_get_overflow_flag	4	static
+../Core/Src/drivers/uart_driver.c:119:6:uart_clear_overflow_flag	4	static
+../Core/Src/drivers/uart_driver.c:126:6:USART2_IRQHandler	16	static

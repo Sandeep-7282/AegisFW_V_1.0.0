@@ -1,0 +1,55 @@
+/*
+ * I2c.c
+ *
+ *  Created on: Dec 14, 2025
+ *      Author: sande
+ */
+#include "i2c.h"
+#include "stm32f446xx.h"
+
+void i2c2_init(void)
+{
+    RCC->AHB1ENR |= RCC_AHB1ENR_GPIOBEN;
+    RCC->APB1ENR |= RCC_APB1ENR_I2C2EN;
+
+    // PB10=SCL, PB11=SDA (AF4)
+    GPIOB->MODER   &= ~((3<<20)|(3<<22));
+    GPIOB->MODER   |=  ((2<<20)|(2<<22));
+    GPIOB->AFR[1]  |=  (4<<8)|(4<<12);
+    GPIOB->OTYPER  |=  (1<<10)|(1<<11);
+    GPIOB->OSPEEDR |=  (3<<20)|(3<<22);
+    GPIOB->PUPDR &= ~((3<<20)|(3<<22));
+    GPIOB->PUPDR |=  ((1<<20)|(1<<22));   // enable internal pull-up
+
+
+    I2C2->CR1 |= I2C_CR1_SWRST;
+    I2C2->CR1 &= ~I2C_CR1_SWRST;
+
+    I2C2->CR2 = 42;
+    I2C2->CCR = 210;            // 100kHz
+    I2C2->TRISE = 43;
+
+    I2C2->CR1 |= I2C_CR1_PE;
+}
+
+void i2c2_write(uint8_t addr, uint8_t *data, uint16_t len)
+{
+    I2C2->CR1 |= I2C_CR1_START;
+    while (!(I2C2->SR1 & I2C_SR1_SB));
+
+    (void)I2C2->SR1;
+    I2C2->DR = addr << 1;
+
+    while (!(I2C2->SR1 & I2C_SR1_ADDR));
+    (void)I2C2->SR1; (void)I2C2->SR2;
+
+    for(uint16_t i=0;i<len;i++)
+    {
+        while (!(I2C2->SR1 & I2C_SR1_TXE));
+        I2C2->DR = data[i];
+    }
+
+    while (!(I2C2->SR1 & I2C_SR1_BTF));
+    I2C2->CR1 |= I2C_CR1_STOP;
+}
+

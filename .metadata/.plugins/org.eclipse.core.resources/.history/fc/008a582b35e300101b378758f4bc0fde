@@ -1,0 +1,14 @@
+/*
+ * task_sensors.h
+ *
+ *  Created on: Dec 27, 2025
+ *      Author: sande
+ */
+
+#ifndef INC_RTOS_TASK_SENSORS_H_
+#define INC_RTOS_TASK_SENSORS_H_
+
+void Sensors_Task(void *arg);
+void Sensors_ISR_Handler(uint16_t pin); // called by EXTI in future
+
+#endif /* INC_RTOS_TASK_SENSORS_H_ */

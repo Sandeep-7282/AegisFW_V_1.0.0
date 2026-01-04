@@ -1,0 +1,92 @@
+#include "gpio_exti.h"
+#include "stm32f446xx.h"
+#include "task_sensors.h"
+#include "dwt.h"
+#include "uart_threadsafe.h"
+#include "stdint.h"
+
+// En clocks
+#define GPIO_ENABLE_PORTA  (RCC->AHB1ENR |= RCC_AHB1ENR_GPIOAEN)
+#define GPIO_ENABLE_PORTB  (RCC->AHB1ENR |= RCC_AHB1ENR_GPIOBEN)
+#define GPIO_ENABLE_PORTC  (RCC->AHB1ENR |= RCC_AHB1ENR_GPIOCEN)
+
+void GPIO_EXTI_Init(void)
+{
+    GPIO_ENABLE_PORTA;
+    GPIO_ENABLE_PORTB;
+    GPIO_ENABLE_PORTC;
+
+    /* ---- GPIO INPUTS ---- */
+
+    // PIR: PA0
+    GPIOA->MODER &= ~(3 << (0*2));
+    GPIOA->PUPDR &= ~(3 << (0*2));
+    GPIOA->PUPDR |=  (1 << (0*2));       // Pull-up
+
+    // IMPACT SENSOR: PB5
+    GPIOB->MODER &= ~(3 << (5*2));
+    GPIOB->PUPDR &= ~(3 << (5*2));
+    GPIOB->PUPDR |=  (1 << (5*2));
+
+    // USER BUTTON: PC13
+    GPIOC->MODER &= ~(3 << (13*2));
+    GPIOC->PUPDR &= ~(3 << (13*2));
+    GPIOC->PUPDR |=  (1 << (13*2));
+
+    /* ---- EXTI MUX ---- */
+    RCC->APB2ENR |= RCC_APB2ENR_SYSCFGEN;
+
+    SYSCFG->EXTICR[0] &= ~SYSCFG_EXTICR1_EXTI0;            // PA0
+    SYSCFG->EXTICR[1] &= ~SYSCFG_EXTICR2_EXTI5;
+    SYSCFG->EXTICR[1] |=  SYSCFG_EXTICR2_EXTI5_PB;         // PB5
+    SYSCFG->EXTICR[3] &= ~SYSCFG_EXTICR4_EXTI13;
+    SYSCFG->EXTICR[3] |=  SYSCFG_EXTICR4_EXTI13_PC;        // PC13
+
+    /* ---- EXTI CONTROL ---- */
+    EXTI->IMR  |= (1<<0) | (1<<5) | (1<<13);
+    EXTI->RTSR |= (1<<0) | (1<<5) | (1<<13);
+    EXTI->FTSR &= ~((1<<0)|(1<<5)|(1<<13));
+
+    /* ---- Interrupt Priority ---- */
+    NVIC_SetPriority(EXTI0_IRQn,      6);
+    NVIC_SetPriority(EXTI9_5_IRQn,    6);
+    NVIC_SetPriority(EXTI15_10_IRQn,  6);
+
+    NVIC_EnableIRQ(EXTI0_IRQn);
+    NVIC_EnableIRQ(EXTI9_5_IRQn);
+    NVIC_EnableIRQ(EXTI15_10_IRQn);
+}
+
+/* ---- ISRs ---- */
+void EXTI0_IRQHandler(void)
+{
+    if(EXTI->PR & (1<<0)) {
+    	EXTI->PR = (1<<0);
+    	uint32_t start = dwt_get_cycle();
+    	Sensors_ISR_Handler(0);
+    	uint32_t end = dwt_get_cycle();
+    	uprintf("[ISR] Latency=%u cycles\n", end-start);
+    }
+}
+
+void EXTI9_5_IRQHandler(void)
+{
+    if(EXTI->PR & (1<<5)) {
+    	EXTI->PR = (1<<5);
+    uint32_t start = dwt_get_cycle();
+    Sensors_ISR_Handler(5);
+    uint32_t end = dwt_get_cycle();
+    uprintf("[ISR] Latency=%u cycles\n", end-start);
+    }
+}
+
+void EXTI15_10_IRQHandler(void)
+{
+    if(EXTI->PR & (1<<13)){
+    	EXTI->PR = (1<<13);
+    	uint32_t start = dwt_get_cycle();
+    Sensors_ISR_Handler(13);
+    uint32_t end = dwt_get_cycle();
+    uprintf("[ISR] Latency=%u cycles\n", end-start);
+    }
+}

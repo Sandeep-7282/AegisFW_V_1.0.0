@@ -1,0 +1,126 @@
+/*
+ * uart_driver.c
+ *
+ *  Created on: Dec 9, 2025
+ *      Author: sande
+ */
+#include "uart_driver.h"
+
+// APB1 clock frequency (Update if system clock changes)
+#define APB1_CLK_HZ 16000000UL  // Typical if SYSCLK = 180 MHz (PLL config) via Cube
+                                   // You can adjust after we finalize clock tree
+
+#define UART2_RX_BUF_SIZE 128
+
+typedef struct {
+    volatile uint8_t buf[UART2_RX_BUF_SIZE];
+    volatile uint16_t head;
+    volatile uint16_t tail;
+    volatile uint8_t overflow;
+} ringbuf_t;
+
+static ringbuf_t uart_rx;
+
+static void uart_gpio_init(void) {
+    // GPIOA clock
+    RCC->AHB1ENR |= RCC_AHB1ENR_GPIOAEN;
+
+    // PA2 (TX) & PA3 (RX) alternate function mode
+    GPIOA->MODER &= ~((3U << 4) | (3U << 6));
+    GPIOA->MODER |=  ((2U << 4) | (2U << 6));   // 10 = AF mode
+
+    // High speed recommended for UART
+    GPIOA->OSPEEDR |= ((3U << 4) | (3U << 6));
+
+    // Set AF7 (USART2)
+    GPIOA->AFR[0] &= ~((0xF << 8) | (0xF << 12));
+    GPIOA->AFR[0] |=  ((7 << 8) | (7 << 12));
+}
+
+static void uart_core_init(uint32_t baud) {
+    RCC->APB1ENR |= RCC_APB1ENR_USART2EN;
+
+    USART2->CR1 &= ~USART_CR1_UE;   // Disable before config
+
+    // Baud = APB1 / baud
+    USART2->BRR = (APB1_CLK_HZ + baud/2) / baud;
+
+    USART2->CR1 |= USART_CR1_TE | USART_CR1_RE;  // TX & RX enable
+    USART2->CR1 |= USART_CR1_RXNEIE;             // RX interrupt enable
+    USART2->CR1 |= USART_CR1_UE;                 // UART enable
+
+    NVIC_EnableIRQ(USART2_IRQn);
+    NVIC_SetPriority(USART2_IRQn, 2);
+}
+
+void uart_init(uint32_t baud) {
+    uart_rx.head = uart_rx.tail = 0;
+    uart_rx.overflow = 0;
+
+    uart_gpio_init();
+    uart_core_init(baud);
+}
+
+void uart_send_byte(uint8_t byte) {
+    while (!(USART2->SR & USART_SR_TXE));
+    USART2->DR = byte;
+}
+
+void uart_send_str(const char *s) {
+    while (*s) {
+        if (*s == '\n') uart_send_byte('\r');
+        uart_send_byte(*s++);
+    }
+}
+
+int uart_rx_available(void) {
+    return (uart_rx.head != uart_rx.tail);
+}
+
+//int uart_get_byte(uint8_t *out) {
+//    if (uart_rx.head == uart_rx.tail) return 0;
+//    *out = uart_rx.buf[uart_rx.tail];
+//    uart_rx.tail = (uart_rx.tail + 1) % UART2_RX_BUF_SIZE;
+//    return 1;
+//}
+// blocking read
+char uart_read(void)
+{
+    while(!(USART2_SR & (1<<5)));   // wait for RXNE
+    return (char)USART2_DR;
+}
+
+// non-blocking read (returns 0 if nothing)
+char uart_read_nonblock(void)
+{
+    if(USART2_SR & (1<<5))
+        return (char)USART2_DR;
+
+    return 0;
+}
+
+uint8_t uart_get_overflow_flag(void) {
+    return uart_rx.overflow;
+}
+
+void uart_clear_overflow_flag(void) {
+    uart_rx.overflow = 0;
+}
+
+// ───── Interrupt ─────────────────
+
+void USART2_IRQHandler(void) {
+    if (USART2->SR & USART_SR_RXNE) {
+        uint8_t byte = USART2->DR;
+        uint16_t next = (uart_rx.head + 1) % UART2_RX_BUF_SIZE;
+        if (next == uart_rx.tail) {
+            uart_rx.overflow = 1; // full → drop byte
+        } else {
+            uart_rx.buf[uart_rx.head] = byte;
+            uart_rx.head = next;
+        }
+
+    }
+}
+
+

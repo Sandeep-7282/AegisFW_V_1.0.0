@@ -1,0 +1,49 @@
+#include "boot_decision.h"
+#include "boot_metadata.h"
+#include "image_validate.h"
+#include "image_crc.h"
+#include "memory_map.h"
+
+#define MAX_BOOT_RETRIES  3
+
+static uint32_t slot_base_addr(uint8_t slot)
+{
+    return (slot == SLOT_A) ? APP_SLOT_A_BASE : APP_SLOT_B_BASE;
+}
+
+boot_decision_t boot_decide(boot_metadata_t *meta)
+{
+    uint32_t base = slot_base_addr(meta->active_slot);
+
+    /* Step 1: Vector sanity */
+    if (image_validate_vector(base) != IMG_OK)
+    {
+        meta->boot_attempts++;
+        boot_metadata_store_safe(meta);
+        return BOOT_DECISION_ROLLBACK;
+    }
+
+    /* Step 2: CRC integrity */
+    uint32_t crc = crc32_compute_flash(
+                        base + 8U,
+                        APP_SLOT_SIZE_BYTES - 8U);
+
+    if (crc != meta->image_crc)
+    {
+        meta->boot_attempts++;
+
+        if (meta->boot_attempts >= MAX_BOOT_RETRIES)
+        {
+            boot_metadata_store_safe(meta);
+            return BOOT_DECISION_ROLLBACK;
+        }
+
+        boot_metadata_store_safe(meta);
+        return BOOT_DECISION_STAY;
+    }
+
+    /* Step 3: Image accepted */
+    meta->boot_attempts = 0;
+    boot_metadata_store_safe(meta);
+    return BOOT_DECISION_BOOT;
+}

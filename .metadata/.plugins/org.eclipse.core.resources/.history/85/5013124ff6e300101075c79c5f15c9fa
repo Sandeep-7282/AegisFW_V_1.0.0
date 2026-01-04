@@ -1,0 +1,48 @@
+//#include "board.h"
+//#include "uart.h"
+//#include "tasks.h"
+//#include "FreeRTOS.h"
+//#include "task.h"
+//
+//TaskHandle_t sensorTaskHandle;
+//TaskHandle_t healthTaskHandle;
+//TaskHandle_t oledTaskHandle;
+//
+//int main(void)
+//{
+//    uart_init();
+//    uart_puts("\r\n==== AEGISFW - DAY 6 START ====\r\n");
+//
+//    board_init();
+//    uart_puts("[SYS] Core Init OK\n");
+//
+//    xTaskCreate(sensor_task,"SENSOR",512,NULL,3,&sensorTaskHandle);
+//
+//    vTaskStartScheduler();
+//    while(1);
+//}
+
+#include "stm32f446xx.h"
+#include "drivers.h"  // same file we made
+
+static void delay_ms(uint32_t ms)
+{
+    for(uint32_t i=0;i<ms*4000;i++);
+}
+
+int main(void)
+{
+    oled_init();
+    oled_clear();
+
+    while(1)
+    {
+        oled_print(0,0,"OLED TEST");
+        oled_print(0,2,"IF YOU SEE THIS");
+        oled_print(0,4,"DISPLAY IS OK");
+
+        delay_ms(5000);
+        oled_clear();
+    }
+}
+

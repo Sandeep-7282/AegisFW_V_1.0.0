@@ -1,0 +1,6 @@
+../Core/Src/drivers/adc.c:17:13:adc_delay	2
+../Core/Src/drivers/adc.c:25:6:adc1_init_temp_vref	1
+../Core/Src/drivers/adc.c:61:6:adc1_read_temp_vref	3
+../Core/Src/drivers/adc.c:75:6:adc1_init_temp_vref_dma	1
+../Core/Src/drivers/adc.c:112:7:adc_compute_vref	2
+../Core/Src/drivers/adc.c:120:7:adc_compute_temperature	2

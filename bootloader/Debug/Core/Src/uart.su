@@ -1,0 +1,5 @@
+../Core/Src/uart.c:11:13:uart_gpio_init	4	static
+../Core/Src/uart.c:23:6:uart_init	8	static
+../Core/Src/uart.c:40:6:uart_putc	16	static
+../Core/Src/uart.c:46:6:uart_puts	16	static
+../Core/Src/uart.c:52:6:uart_getc	4	static

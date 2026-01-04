@@ -1,0 +1,26 @@
+/*
+ * tasks_sensor.c
+ *
+ *  Created on: Dec 28, 2025
+ *      Author: sande
+ */
+#include "drivers.h"
+#include "FreeRTOS.h"
+#include "task.h"
+
+TaskHandle_t sensorTaskHandle;
+
+void sensor_task(void *arg)
+{
+    for(;;)
+    {
+        ulTaskNotifyTake(pdTRUE,portMAX_DELAY);
+
+        float t=convert_temp(adc_dma_buf[0]);
+        oled_print(0,0,"Sensor Event");
+        oled_print(0,16,"Temp:");
+        // convert float to display using sprintf externally
+    }
+}
+
+

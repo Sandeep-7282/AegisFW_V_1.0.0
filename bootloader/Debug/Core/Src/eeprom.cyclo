@@ -1,0 +1,9 @@
+../Core/Src/eeprom.c:19:13:i2c_wait_idle	2
+../Core/Src/eeprom.c:24:13:i2c_start	2
+../Core/Src/eeprom.c:31:13:i2c_send_addr	4
+../Core/Src/eeprom.c:47:13:i2c_stop	1
+../Core/Src/eeprom.c:52:13:i2c_gpio_init	1
+../Core/Src/eeprom.c:68:5:eeprom_init	1
+../Core/Src/eeprom.c:87:5:eeprom_read	8
+../Core/Src/eeprom.c:121:13:eeprom_wait_ready	3
+../Core/Src/eeprom.c:142:5:eeprom_write	9

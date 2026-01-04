@@ -1,0 +1,98 @@
+#include "boot_decision.h"
+#include "boot_metadata.h"
+#include "image_validate.h"
+#include "image_crc.h"
+#include "memory_map.h"
+#include "uart.h"
+#include "stm32f4xx.h"
+#include "stdio.h"
+
+
+uint32_t slot_base(uint8_t s)
+{
+    return (s == SLOT_A) ? APP_SLOT_A_BASE : APP_SLOT_B_BASE;
+}
+
+
+/*==============================================================*
+ *                 FINAL SIMPLIFIED BOOT DECISION
+ *==============================================================*/
+boot_decision_t boot_decide(boot_metadata_t *meta)
+{
+    uart_puts("Running Boot Decision...\r\n");
+
+    bool A_ok = (image_validate_vector(APP_SLOT_A_BASE) == IMG_OK);
+    bool B_ok = (image_validate_vector(APP_SLOT_B_BASE) == IMG_OK);
+
+    /*--------------------------------------------------------------*
+     * 0) No firmware present anywhere
+     *--------------------------------------------------------------*/
+    if (!A_ok && !B_ok) {
+        uart_puts("\n*** NO VALID APPLICATION FOUND ***\n");
+        uart_puts("Bootloader will stay active.\n\n");
+        return BOOT_DECISION_STAY;
+    }
+
+
+    /*--------------------------------------------------------------*
+     * 1) Active Slot Preferred — if valid → Boot it immediately
+     *--------------------------------------------------------------*/
+
+    if ( A_ok)
+    {
+        printf("Active Slot A is valid → Proceed to CRC Check.\r\n");
+
+        uint32_t crcA = crc32_compute_flash(APP_SLOT_A_BASE+8,
+                                                   APP_SLOT_SIZE_BYTES-8);
+
+        /* First-boot CRCA enrollment */
+        if (meta->crcA == 0) {         // First time enrollment
+                   uart_puts("First Boot -> Enrolling CRC-A\r\n");
+                   meta->crcA = crcA;
+                   meta->active_slot = SLOT_A;
+                   boot_metadata_store_safe(meta);
+                   return BOOT_DECISION_BOOT;
+               }
+        if (meta->crcA == crcA) {     // CRC correct — boot A
+                   uart_puts("Slot-A valid, CRC OK → booting A\r\n");
+                   meta->active_slot = SLOT_A;
+                   return BOOT_DECISION_BOOT;
+               }
+               uart_puts("Slot-A CRC Mismatch → Try Slot-B\r\n");
+    }
+
+
+    /*--------------------------------------------------------------*
+     * 2) If active slot invalid → rollback immediately
+     *--------------------------------------------------------------*/
+    if (B_ok)
+        {
+    	uart_puts("Slot-A invalid → Switching to recovery Slot........\r\n");
+            uint32_t crcB = crc32_compute_flash(APP_SLOT_B_BASE+8,
+                                                APP_SLOT_SIZE_BYTES-8);
+            printf("Rolling back to Slot B.......\n");
+
+            if (meta->crcB == 0) {        // Enrollment
+                uart_puts("First Boot -> Enroll CRC-B\r\n");
+                meta->crcB = crcB;
+                meta->active_slot = SLOT_B;
+                boot_metadata_store_safe(meta);
+                return BOOT_DECISION_BOOT;
+            }
+
+            if (meta->crcB == crcB) {     // Boot B
+                uart_puts("Slot-B valid → booting B.......\r\n");
+                meta->active_slot = SLOT_B;
+                return BOOT_DECISION_BOOT;
+            }
+        }
+    if(meta->crcB != crcB && meta->crcA != crcA){
+    	 uart_puts("CRC mismatch detected → awaiting user approval\r\n");
+    	    return BOOT_DECISION_WAIT_FOR_UPDATE;
+    }
+    /*--------------------------------------------------------------*
+     * 3) Backup slot also invalid → stay safe
+     *--------------------------------------------------------------*/
+    uart_puts("\nBackup slot also invalid → Staying in Bootloader!\n");
+    return BOOT_DECISION_STAY;
+}

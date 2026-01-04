@@ -1,0 +1,48 @@
+/*
+ * freertos_init.c
+ *
+ *  Created on: Dec 26, 2025
+ *      Author: sande
+ */
+/* application/rtos/freertos_init.c */
+
+#include "FreeRTOS.h"
+#include "task.h"
+#include "freertos_init.h"
+#include "uart_driver.h"
+#include "gpio_driver.h"
+#include "tasks_common.h"
+#include "task_health.h"
+#include "task_oled.h"
+#include "task_sensors.h"
+#include "task_cli.h"
+#include "task_adc.h"
+#include "task_start.h"
+
+QueueHandle_t q_sensors;
+TaskHandle_t adcTaskHandle;
+
+void rtos_start(void)
+{
+     // Queues
+	q_sensors = xQueueCreate(10, sizeof(sensor_event_t));   // NEW - GLOBAL
+	uart_mutex = xSemaphoreCreateMutex();
+
+	uart_send_str("\r\n[RTOS] Creating tasks...\r\n");
+
+	// Tasks
+	   // xTaskCreate(ADC_Task, "ADC", 256, NULL, 2, NULL);
+	    xTaskCreate(HealthMonitor_Task, "Health", 256, NULL, 4, NULL);
+	    xTaskCreate(CLI_Task,           "CLI",    512, NULL, 4, NULL);
+	    xTaskCreate(Sensors_Task,       "Sensor", 512, NULL, 3, NULL);
+	   // xTaskCreate(OLED_Task,          "OLED",   512, NULL, 2, NULL);
+	  //  xTaskCreate(Start_Peripherals_Task,"START",256,NULL,3,NULL);
+
+    uart_send_str("[RTOS] Scheduler starting...\r\n");
+
+    vTaskStartScheduler();
+
+    while(1); // should never reach
+}
+
+

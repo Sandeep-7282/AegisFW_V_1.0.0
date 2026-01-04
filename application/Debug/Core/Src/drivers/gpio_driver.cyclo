@@ -1,0 +1,2 @@
+../Core/Src/drivers/gpio_driver.c:10:6:gpio_init_led	1
+../Core/Src/drivers/gpio_driver.c:18:6:gpio_led_toggle	1

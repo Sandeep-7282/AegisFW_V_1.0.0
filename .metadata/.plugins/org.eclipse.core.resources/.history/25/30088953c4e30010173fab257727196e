@@ -1,0 +1,135 @@
+/*
+ * adc.c
+ *
+ *  Created on: Dec 14, 2025
+ *      Author: sande
+ */
+#include "adc.h"
+
+/* Factory calibration values (from datasheet) */
+#define VREFINT_CAL_ADDR   ((uint16_t*)0x1FFF7A2A)
+#define TEMP30_CAL_ADDR    ((uint16_t*)0x1FFF7A2C)
+#define TEMP110_CAL_ADDR   ((uint16_t*)0x1FFF7A2E)
+
+void adc1_init_temp_vref(void)
+{
+    /* Enable ADC1 clock */
+    RCC->APB2ENR |= RCC_APB2ENR_ADC1EN;
+
+    /* ADC common configuration */
+    ADC->CCR &= ~(0x3 << 16);          /* Prescaler clear */
+    ADC->CCR |=  (0x1 << 16);          /* PCLK2 / 4 */
+    ADC->CCR |= ADC_CCR_TSVREFE;       /* Enable TEMP + VREFINT */
+
+    /* ADC1 base config */
+    ADC1->CR1 = ADC_CR1_SCAN;          /* Enable scan mode */
+    ADC1->CR2 = 0;
+
+    //EOC is set after each conversion
+    ADC1->CR2 |= ADC_CR2_EOCS;
+
+    /* Right alignment */
+    ADC1->CR2 &= ~ADC_CR2_ALIGN;
+
+    /* Single conversion sequence */
+    ADC1->CR2 &= ~ADC_CR2_CONT;
+
+    /* Sample time: long for both channels */
+    ADC1->SMPR1 |= (0x4 << 18);        /* CH16 = 84 cycles */
+    ADC1->SMPR1 |= (0x4 << 21);        /* CH17 = 84 cycles */
+
+    /* Sequence length = 2 conversions */
+    ADC1->SQR1 &= ~(0xF << 20);
+    ADC1->SQR1 |=  (1 << 20);          /* (2 - 1) */
+
+    /* Sequence order */
+    ADC1->SQR3 &= ~(0x3FF);
+    ADC1->SQR3 |=  (16 << 0);          /* 1st: TEMP */
+    ADC1->SQR3 |=  (17 << 5);          /* 2nd: VREFINT */
+
+    /* Enable ADC */
+    ADC1->CR2 |= ADC_CR2_ADON;
+
+    for (volatile uint32_t i = 0; i < 10000; i++);
+}
+
+void adc1_read_temp_vref(adc_sample_t *sample)
+{
+    /* Start conversion */
+    ADC1->CR2 |= ADC_CR2_SWSTART;
+
+    /* Wait for first conversion */
+    while (!(ADC1->SR & ADC_SR_EOC));
+    sample->temp_raw = ADC1->DR;
+
+    /* Wait for second conversion */
+    while (!(ADC1->SR & ADC_SR_EOC));
+    sample->vref_raw = ADC1->DR;
+}
+/* Key Notes
+ * ADC scan mode without DMA requires explicit per-conversion synchronization.
+   //wait for second conversion
+    while (!(ADC1->SR & ADC_SR_EOC));
+    sample->vref_raw = ADC1->DR;
+
+If you don’t:
+
+Channels will alias
+
+Calibration math will lie
+
+Debugging becomes misleading
+ * */
+
+void adc1_init_temp_vref_dma(void)
+{
+    /* Enable ADC1 clock */
+    RCC->APB2ENR |= RCC_APB2ENR_ADC1EN;
+
+    /* ADC common config */
+    ADC->CCR |= ADC_CCR_TSVREFE;
+    ADC->CCR &= ~(0x3 << 16);
+    ADC->CCR |=  (0x1 << 16);    /* PCLK2 / 4 */
+
+    /* ADC config */
+    ADC1->CR1 = ADC_CR1_SCAN;
+    ADC1->CR2 = 0;
+
+    ADC1->CR2 |= ADC_CR2_DMA;    /* Enable DMA */
+    ADC1->CR2 |= ADC_CR2_DDS;    /* DMA continuous requests */
+    ADC1->CR2 |= ADC_CR2_CONT;   /* Continuous mode */
+    ADC1->CR2 &= ~ADC_CR2_ALIGN;
+
+    /* Sample times */
+    ADC1->SMPR1 |= (0x4 << 18);  /* CH16 */
+    ADC1->SMPR1 |= (0x4 << 21);  /* CH17 */
+
+    /* Sequence length = 2 */
+    ADC1->SQR1 |= (1 << 20);
+
+    /* Sequence order */
+    ADC1->SQR3 |= (16 << 0);
+    ADC1->SQR3 |= (17 << 5);
+
+    /* Enable ADC */
+    ADC1->CR2 |= ADC_CR2_ADON;
+}
+
+float adc_compute_vref(uint16_t vref_raw)
+{
+    /* VREFINT calibration at 3.3V */
+    return 3.3f * ((float)(*VREFINT_CAL_ADDR) / vref_raw);
+}
+
+float adc_compute_temperature(uint16_t temp_raw, float vref)
+{
+    float vsense = (temp_raw * vref) / 4095.0f;
+
+    float temp30 = *TEMP30_CAL_ADDR * vref / 4095.0f;
+    float temp110 = *TEMP110_CAL_ADDR * vref / 4095.0f;
+
+    return ((vsense - temp30) * (110.0f - 30.0f) /
+            (temp110 - temp30)) + 30.0f;
+}
+
+

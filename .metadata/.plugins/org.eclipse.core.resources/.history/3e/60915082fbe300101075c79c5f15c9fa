@@ -1,0 +1,47 @@
+/*
+ * adc_dma.c
+ *
+ *  Created on: Dec 28, 2025
+ *      Author: sande
+ */
+#include "stm32f446xx.h"
+#include "drivers.h"
+
+volatile uint16_t adc_dma_buf[1];
+
+void adc_dma_init(void)
+{
+    RCC->APB2ENR |= (1<<8);
+
+    ADC->CCR |= (1<<23);
+
+    RCC->AHB1ENR |= (1<<22);
+
+    DMA2_Stream0->CR = (0<<25)|(1<<10)|(1<<8);
+    DMA2_Stream0->PAR  = (uint32_t)&ADC1->DR;
+    DMA2_Stream0->M0AR = (uint32_t)&adc_dma_buf[0];
+    DMA2_Stream0->NDTR = 1;
+    DMA2_Stream0->CR  |= (1<<4);
+    NVIC_EnableIRQ(DMA2_Stream0_IRQn);
+
+    ADC1->SQR3 = 18;
+    ADC1->SMPR1 |= (7<<24);
+
+    ADC1->CR2 |= (1<<1)|(1<<8)|(1<<0);
+    DMA2_Stream0->CR |= (1<<0);
+    ADC1->CR2 |= (1<<30);
+    ADC1->CR2 |= ADC_CR2_SWSTART;     // Start conversions
+    DMA2_Stream0->CR |= DMA_SxCR_CIRC;
+
+}
+
+float convert_temp(uint16_t raw)
+{
+    const float V25=0.76f;
+    const float AvgSlope=2.5f/1000;
+    float V=(raw*3.3f)/4095.0f;
+    return ((V-V25)/AvgSlope)+25.0f;
+}
+
+
+

@@ -1,0 +1,27 @@
+/*
+ * task_adc.c
+ *
+ *  Created on: Dec 27, 2025
+ *      Author: sande
+ */
+#include "tasks_common.h"
+#include "uart_threadsafe.h"
+#include "stdio.h"
+
+void ADC_Task(void *arg)
+{
+    uprintf("[ADC] Task started\n");
+
+    while(1)
+    {
+        hb_adc = 1;
+        vTaskDelay(pdMS_TO_TICKS(500)); // keep alive
+    }
+}
+
+void ADC_DMA_Complete_ISR(void)
+{
+    // Step-5 logic will push EVT_ADC_TEMP_READY to queue
+}
+
+

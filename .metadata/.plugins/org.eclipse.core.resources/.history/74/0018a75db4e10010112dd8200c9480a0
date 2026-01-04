@@ -1,0 +1,92 @@
+#include "boot_decision.h"
+#include "boot_metadata.h"
+#include "image_validate.h"
+#include "image_crc.h"
+#include "memory_map.h"
+#include "uart.h"
+#include "boot_metadata.h"
+
+#define MAX_BOOT_RETRIES   3
+
+/* Resolve flash base of current active slot */
+uint32_t slot_base_addr(uint8_t slot)
+{
+    return (slot == SLOT_A) ? APP_SLOT_A_BASE : APP_SLOT_B_BASE;
+}
+
+boot_decision_t boot_decide(boot_metadata_t *meta)
+{
+    uint32_t base = slot_base_addr(meta->active_slot);
+
+    uart_puts("Running Boot Decision...\r\n");
+
+
+    if (!slot_is_valid(APP_SLOT_A_BASE) && !slot_is_valid(APP_SLOT_B_BASE))
+    {
+        uart_puts("\r\n*** FATAL: No valid images available ***\r\n");
+        uart_puts("System will stay in Bootloader.\r\n\n");
+        return BOOT_DECISION_STAY;
+    }
+
+    /*-------------------------------------------------------------*
+     * Step-1: Validate vector table (MSP + Reset_Handler sanity)
+     *-------------------------------------------------------------*/
+    if (image_validate_vector(base) != IMG_OK)
+    {
+        uart_puts("Vector validation failed → marking slot bad\r\n");
+        while(meta->boot_attempts<MAX_BOOT_RETRIES){
+        	  meta->boot_attempts++;
+        	   boot_metadata_store_safe(meta);
+        	   NVIC_SystemReset();
+        	  uart_puts("Retrying Again......\n");
+        }
+
+        }
+        if (image_validate_vector(base) != IMG_OK){
+            uart_puts("MAX Retries Reached Image_Verfication Failed\n");
+         	uart_puts("Rolling Back to Recovery/FallBack Image\n");
+             return BOOT_DECISION_ROLLBACK;
+        }
+
+    }
+    /* Step 2: CRC integrity */
+    uint32_t crc = crc32_compute_flash(
+                        base + 8U,
+                        APP_SLOT_SIZE_BYTES - 8U);
+
+    /* --- New enrollment logic --- */
+
+    /* Case A: First boot of this slot -> enroll */
+    if (meta->image_crc == 0)
+    {
+        uart_puts("Enrolling first image CRC...\r\n");
+        meta->image_crc = crc;
+        meta->boot_attempts = 0;
+        meta->checksum = metadata_checksum(meta);
+        boot_metadata_store_safe(meta);
+        return BOOT_DECISION_BOOT;
+    }
+
+    /* Case B: CRC mismatch but image valid & allowed to update CRC */
+    if (crc != meta->image_crc)
+    {
+        uart_puts("CRC mismatch -> updating CRC to new image\r\n");
+
+        meta->image_crc = crc;
+        meta->boot_attempts = 0;
+        meta->checksum = metadata_checksum(meta);
+        boot_metadata_store_safe(meta);
+
+        uart_puts("CRC updated. Marking image trusted.\r\n");
+        return BOOT_DECISION_BOOT;
+    }
+
+    /* Case C: CRC matches */
+    uart_puts("Image valid & CRC matches\r\n");
+    meta->boot_attempts = 0;
+    meta->checksum = metadata_checksum(meta);
+    boot_metadata_store_safe(meta);
+
+    return BOOT_DECISION_BOOT;
+
+}

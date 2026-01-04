@@ -1,0 +1,95 @@
+#include "boot_decision.h"
+#include "boot_metadata.h"
+#include "image_validate.h"
+#include "image_crc.h"
+#include "memory_map.h"
+#include "uart.h"
+#include "stm32f4xx.h"
+#include "stdio.h"
+
+
+static uint32_t slot_base(uint8_t s)
+{
+    return (s == SLOT_A) ? APP_SLOT_A_BASE : APP_SLOT_B_BASE;
+}
+
+
+/*==============================================================*
+ *                 FINAL SIMPLIFIED BOOT DECISION
+ *==============================================================*/
+boot_decision_t boot_decide(boot_metadata_t *meta)
+{
+    uart_puts("Running Boot Decision...\r\n");
+
+    bool A_ok = (image_validate_vector(APP_SLOT_A_BASE) == IMG_OK);
+    bool B_ok = (image_validate_vector(APP_SLOT_B_BASE) == IMG_OK);
+
+    /*--------------------------------------------------------------*
+     * 0) No firmware present anywhere
+     *--------------------------------------------------------------*/
+    if (!A_ok && !B_ok) {
+        uart_puts("\n*** NO VALID APPLICATION FOUND ***\n");
+        uart_puts("Bootloader will stay active.\n\n");
+        return BOOT_DECISION_STAY;
+    }
+
+
+    /*--------------------------------------------------------------*
+     * 1) Active Slot Preferred — if valid → Boot it immediately
+     *--------------------------------------------------------------*/
+    uint8_t slot = meta->active_slot;
+    uint32_t base = slot_base(slot);
+
+    if ((slot == SLOT_A && A_ok) ||
+        (slot == SLOT_B && B_ok))
+    {
+        printf("Active Slot %c is valid → Proceed to boot.\r\n",
+                    slot == SLOT_A ? 'A' : 'B');
+
+        uint32_t crc = crc32_compute_flash(base + 8U,
+                                           APP_SLOT_SIZE_BYTES - 8U);
+
+        /* First-boot CRC enrollment */
+        if (meta->image_crc == 0) {
+            uart_puts("First boot → Enrolling CRC\r\n");
+            meta->image_crc = crc;
+            meta->checksum = metadata_checksum(meta);
+            boot_metadata_store_safe(meta);
+        }
+        /* CRC mismatch → treat as corruption, failover immediately */
+        else if (crc != meta->image_crc) {
+            uart_puts("CRC MISMATCH → Marking image bad\n");
+            goto ROLLBACK_NOW;
+        }
+
+        return BOOT_DECISION_BOOT;
+    }
+
+
+    /*--------------------------------------------------------------*
+     * 2) If active slot invalid → rollback immediately
+     *--------------------------------------------------------------*/
+ROLLBACK_NOW:
+
+    uart_puts("Active slot invalid → Switching to backup.\r\n");
+
+    uint8_t other = (slot == SLOT_A) ? SLOT_B : SLOT_A;
+
+    if ((other == SLOT_A && A_ok) ||
+        (other == SLOT_B && B_ok))
+    {
+        printf("Rolling back to Slot %c\n", other == SLOT_A ? 'A' : 'B');
+        meta->active_slot = other;
+        meta->image_crc   = 0;               // force re-enroll for new slot
+        meta->checksum    = metadata_checksum(meta);
+        boot_metadata_store_safe(meta);
+        return BOOT_DECISION_ROLLBACK;
+    }
+
+
+    /*--------------------------------------------------------------*
+     * 3) Backup slot also invalid → stay safe
+     *--------------------------------------------------------------*/
+    uart_puts("\nBackup slot also invalid → Staying in Bootloader!\n");
+    return BOOT_DECISION_STAY;
+}

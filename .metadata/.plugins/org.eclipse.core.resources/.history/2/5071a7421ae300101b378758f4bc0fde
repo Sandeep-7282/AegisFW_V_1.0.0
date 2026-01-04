@@ -1,0 +1,47 @@
+/*
+ * task_oled.h
+ *
+ *  Created on: Dec 27, 2025
+ *      Author: sande
+ */
+#include "tasks_common.h"
+#include "uart_threadsafe.h"
+#include "oled.h"
+#include "task_oled.h"
+#include "FreeRTOS.h"
+#include "task.h"
+#include "queue.h"
+
+QueueHandle_t q_oled;
+
+void OLED_Task(void *arg)
+{
+    q_oled = xQueueCreate(10, sizeof(oled_msg_t));
+    oled_init();
+
+    oled_msg_t msg;
+    oled_clear();
+
+    for (;;)
+    {
+        if (xQueueReceive(q_oled, &msg, portMAX_DELAY))
+        {
+            oled_print(msg.row, msg.text);
+        }
+    }
+}
+
+/* safe API callable from tasks only */
+void OLED_PrintAsync(uint8_t row, const char *s)
+{
+    oled_msg_t msg;
+
+    msg.row = row;
+    strncpy(msg.text, s, sizeof(msg.text)-1);
+    msg.text[sizeof(msg.text)-1] = 0;
+
+    xQueueSend(q_oled, &msg, 0);
+}
+
+
+

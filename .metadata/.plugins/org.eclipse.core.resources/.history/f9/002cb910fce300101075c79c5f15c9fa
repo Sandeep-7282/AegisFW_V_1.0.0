@@ -1,0 +1,61 @@
+/*
+ * adc_dma.c
+ *
+ *  Created on: Dec 28, 2025
+ *      Author: sande
+ */
+#include "stm32f446xx.h"
+#include "drivers.h"
+
+volatile uint16_t adc_dma_buf[1];
+
+void adc_dma_init(void)
+{
+    RCC->APB2ENR |= RCC_APB2ENR_ADC1EN;
+    RCC->AHB1ENR |= RCC_AHB1ENR_DMA2EN;
+
+    // Enable internal Vref
+    ADC->CCR |= ADC_CCR_TSVREFE;
+
+    // Stop stream before config
+    DMA2_Stream0->CR &= ~DMA_SxCR_EN;
+    while(DMA2_Stream0->CR & DMA_SxCR_EN);
+
+    DMA2_Stream0->PAR  = (uint32_t)&ADC1->DR;
+    DMA2_Stream0->M0AR = (uint32_t)adc_dma_buf;
+    DMA2_Stream0->NDTR = 1;
+
+    // CH0, peripheral-to-memory, 16-bit, circular
+    DMA2_Stream0->CR =
+        (0<<25) |                // CH0
+        DMA_SxCR_MINC |
+        DMA_SxCR_CIRC |
+        DMA_SxCR_PSIZE_0 |       // 16-bit
+        DMA_SxCR_MSIZE_0 |
+        DMA_SxCR_PL_1;           // high priority
+
+    NVIC_EnableIRQ(DMA2_Stream0_IRQn);
+    DMA2_Stream0->CR |= DMA_SxCR_EN;
+
+    // ADC SETTINGS
+    ADC1->CR2 = 0;
+    ADC1->SQR3 = 18;                  // Channel 18 = VREFINT
+    ADC1->SMPR1 |= (7<<0);            // longest sample time
+
+    ADC1->CR2 |= ADC_CR2_DMA | ADC_CR2_CONT | ADC_CR2_ADON;
+
+    for(int i=0;i<1000;i++);          // stabilization delay
+
+    ADC1->CR2 |= ADC_CR2_SWSTART;     // Start continuous DMA samples
+}
+
+float convert_temp(uint16_t raw)
+{
+    const float V25=0.76f;
+    const float AvgSlope=2.5f/1000;
+    float V=(raw*3.3f)/4095.0f;
+    return ((V-V25)/AvgSlope)+25.0f;
+}
+
+
+

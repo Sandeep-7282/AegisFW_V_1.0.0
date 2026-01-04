@@ -1,0 +1,28 @@
+/*
+ * uart_threadsafe.h
+ *
+ *  Created on: Dec 27, 2025
+ *      Author: sande
+ */
+
+#ifndef INC_DRIVERS_UART_THREADSAFE_H_
+#define INC_DRIVERS_UART_THREADSAFE_H_
+
+#include "tasks_common.h"
+#include <stdio.h>
+#include <stdarg.h>
+
+#define UART_LOCK()     xSemaphoreTake(uart_mutex, portMAX_DELAY)
+#define UART_UNLOCK()   xSemaphoreGive(uart_mutex)
+
+static inline void uprintf(const char *fmt, ...)
+{
+    UART_LOCK();
+    va_list args;
+    va_start(args, fmt);
+    printf(fmt, args);
+    va_end(args);
+    UART_UNLOCK();
+}
+
+#endif /* INC_DRIVERS_UART_THREADSAFE_H_ */

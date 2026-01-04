@@ -1,0 +1,56 @@
+/* application/Core/main.c */
+#include "FreeRTOS.h"
+#include "task.h"
+#include "freertos_init.h"
+#include "uart_driver.h"
+#include "gpio_driver.h"
+#include "gpio_exti.h"
+#include "adc.h"
+#include "dma.h"
+#include "oled.h"
+#include "i2c.h"
+#include "system.h"
+#include "dwt.h"
+#include "timer2.h"
+
+#define APP_SLOT_A_BASE        0x0800C000UL
+//#define APP_SLOT_B_BASE        0x0803E000UL
+#define APP_SLOT_SIZE_BYTES   (200UL * 1024UL)
+
+#if defined(APP_SLOT_A_BASE)
+    #define APP_BASE_ADDR  APP_SLOT_A_BASE
+#elif defined(APP_SLOT_B_BASE)
+    #define APP_BASE_ADDR  APP_SLOT_B_BASE
+#endif
+
+static void VectorTable_Remap(void)
+{
+    SCB->VTOR = APP_BASE_ADDR;
+    __DSB(); __ISB();
+}
+
+int main(void)
+{
+    VectorTable_Remap();
+   // __enable_irq();
+
+    uart_init(115200);
+   // system_init();
+    dwt_init();
+
+    gpio_init_led();
+    GPIO_EXTI_Init();
+//
+    //adc1_init_temp_vref_dma();
+  //  dma2_adc1_init();
+//    ADC1->CR2 |= ADC_CR2_SWSTART;
+
+    uart_send_str("\n[AegisFW-APP] Boot OK\n");
+
+    rtos_start();        // tasks created + scheduler starts
+                         // queues now exist
+
+    // runs after scheduler starts (from a task)
+
+    while(1);
+}

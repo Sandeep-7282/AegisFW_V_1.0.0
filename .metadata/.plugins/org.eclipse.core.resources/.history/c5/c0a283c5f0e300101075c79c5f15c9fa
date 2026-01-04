@@ -1,0 +1,19 @@
+#include "board.h"
+#include "drivers.h"
+#include "FreeRTOS.h"
+#include "task.h"
+
+extern TaskHandle_t sensorTaskHandle;
+extern TaskHandle_t timerTaskHandle;
+
+int main(void)
+{
+    board_init();
+
+    xTaskCreate(sensor_task,"SENSOR",256,NULL,2,&sensorTaskHandle);
+    xTaskCreate(health_task,"HEALTH",256,NULL,3,&timerTaskHandle);
+    xTaskCreate(oled_task,"OLED",256,NULL,1,NULL);
+
+    vTaskStartScheduler();
+    while(1);
+}

@@ -1,0 +1,4 @@
+1766601807626	Delete resource 'application/Core/Inc/gpio.h'
+1766601814007	Delete resource 'application/Core/Src/gpio.c'
+1766757318829	Delete resource 'application/Core/Src/uart.c'
+1766758609275	Delete resource 'application/Core/Inc/drivers/gpio_drivr.h'

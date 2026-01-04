@@ -1,0 +1,45 @@
+/*
+ * oled_i2c.c
+ *
+ *  Created on: Dec 28, 2025
+ *      Author: sande
+ */
+#include "drivers.h"
+#include "stm32f446xx.h"
+#include <string.h>
+
+static void i2c_delay(void)
+{
+    for(volatile int i=0;i<80;i++);
+}
+
+static void i2c_start(void)
+{
+    // PA9=SCL PA10=SDA
+    GPIOA->BSRR = (1<<10)|(1<<9);
+    i2c_delay();
+    GPIOA->BSRR = (1<<(10+16));
+    i2c_delay();
+    GPIOA->BSRR = (1<<(9+16));
+    i2c_delay();
+}
+
+void oled_init(void)
+{
+    RCC->AHB1ENR |= (1<<0);
+    GPIOA->MODER |= (1<<(9*2))|(1<<(10*2));
+
+    oled_clear();
+}
+
+void oled_print(uint8_t x,uint8_t y,const char *str)
+{
+    // dummy minimal version
+}
+
+void oled_clear(void)
+{
+    // dummy screen clear
+}
+
+

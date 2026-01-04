@@ -1,0 +1,7 @@
+1766927412608	Delete resource 'application/Core/Inc/drivers'
+1766927417887	Delete resource 'application/Core/Inc/rtos'
+1766927423014	Delete resource 'application/Core/Src/rtos'
+1766927427415	Delete resource 'application/Core/Src/drivers'
+1766927499866	Delete resource 'application/Core/Src/system.c'
+1766929812347	Delete resource 'application/Core/Src/peripherals/oled_i2c.c'
+1766930657090	Delete resource 'application/Core/Src/oled_test_main.c'

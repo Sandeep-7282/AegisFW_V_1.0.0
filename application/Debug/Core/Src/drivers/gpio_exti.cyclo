@@ -1,0 +1,6 @@
+../Drivers/CMSIS/Include/core_cm4.h:1684:22:__NVIC_EnableIRQ	2
+../Drivers/CMSIS/Include/core_cm4.h:1814:22:__NVIC_SetPriority	2
+../Core/Src/drivers/gpio_exti.c:24:6:GPIO_EXTI_Init	1
+../Core/Src/drivers/gpio_exti.c:73:6:EXTI0_IRQHandler	3
+../Core/Src/drivers/gpio_exti.c:86:6:EXTI9_5_IRQHandler	3
+../Core/Src/drivers/gpio_exti.c:99:6:EXTI15_10_IRQHandler	3

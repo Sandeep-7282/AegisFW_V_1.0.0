@@ -1,0 +1,18 @@
+/*
+ * tasks_common.c
+ *
+ *  Created on: Dec 27, 2025
+ *      Author: sande
+ */
+#include "tasks_common.h"
+
+//QueueHandle_t q_sensor_events = NULL;
+QueueHandle_t q_oled         = NULL;
+SemaphoreHandle_t uart_mutex = NULL;
+
+volatile uint8_t hb_cli     = 0;
+volatile uint8_t hb_sensor  = 0;
+volatile uint8_t hb_adc     = 0;
+volatile uint8_t hb_oled    = 0;
+
+

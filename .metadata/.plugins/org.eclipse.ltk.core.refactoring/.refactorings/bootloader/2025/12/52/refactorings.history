@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<session version="1.0">
+<refactoring comment="Rename resource &apos;bootloader/Core/Src/boot_metadat.c&apos; to &apos;boot_metadata.c&apos;" description="Rename resource &apos;boot_metadat.c&apos;" flags="7" id="org.eclipse.ltk.core.refactoring.rename.resource" input="Core/Src/boot_metadat.c" name="boot_metadata.c" stamp="1766516233742" updateReferences="true"/>
+</session>

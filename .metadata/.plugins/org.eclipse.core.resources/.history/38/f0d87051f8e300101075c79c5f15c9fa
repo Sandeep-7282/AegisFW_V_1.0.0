@@ -1,0 +1,31 @@
+/*
+ * system_init.c
+ *
+ *  Created on: Dec 28, 2025
+ *      Author: sande
+ */
+#include "board.h"
+#include "drivers.h"
+
+void system_clock_init(void)
+{
+    RCC->CR |= (1<<16);
+    while(!(RCC->CR & (1<<17)));
+
+    RCC->PLLCFGR = (8<<0) | (336<<6) | (0<<16) | (7<<24);
+    RCC->CR |= (1<<24);
+    while(!(RCC->CR & (1<<25)));
+
+    RCC->CFGR |= (2<<0);
+    while(((RCC->CFGR>>2)&3)!=2);
+}
+
+void board_init(void)
+{
+    system_clock_init();
+    gpio_exti_init();
+    tim2_init();
+    adc_dma_init();
+    dwt_init();
+    oled_init();
+}

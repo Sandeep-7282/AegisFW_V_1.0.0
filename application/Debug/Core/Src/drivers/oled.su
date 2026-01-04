@@ -1,0 +1,6 @@
+../Core/Src/drivers/oled.c:21:13:oled_cmd	24	static
+../Core/Src/drivers/oled.c:27:13:oled_data	24	static
+../Core/Src/drivers/oled.c:33:6:oled_is_present	4	static
+../Core/Src/drivers/oled.c:38:6:oled_init	16	static
+../Core/Src/drivers/oled.c:65:6:oled_clear	16	static
+../Core/Src/drivers/oled.c:81:6:oled_print	24	static

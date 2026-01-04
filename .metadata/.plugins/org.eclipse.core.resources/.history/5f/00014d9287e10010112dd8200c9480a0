@@ -1,0 +1,193 @@
+/*
+ * boot_metadat.c
+ *
+ *  Created on: Dec 24, 2025
+ *      Author: sande
+ */
+#include "boot_metadata.h"
+#include "eeprom.h"
+#include "uart.h"
+#include "stdio.h"
+#include "memory_map.h"
+#include "stdbool.h"
+#include "image_validate.h"
+
+uint32_t metadata_checksum(const boot_metadata_t *m)
+{
+    const uint8_t *p = (const uint8_t *)m;
+    uint32_t sum = 0;
+
+    for (uint32_t i = 0; i < sizeof(boot_metadata_t) - sizeof(uint32_t); i++)
+    {
+        sum += p[i];
+    }
+    return sum;
+}
+
+bool slot_is_valid(uint32_t base)
+{
+    return (image_validate_vector(base) == IMG_OK);
+}
+
+void boot_metadata_default(boot_metadata_t *m)
+{
+    m->magic         = BOOT_METADATA_MAGIC;
+    m->version       = BOOT_METADATA_VERSION;
+    m->length        = sizeof(boot_metadata_t);
+    m->active_slot   = SLOT_A;
+    m->boot_attempts = 0;
+    m->fault_count   = 0;
+    m->image_crc     = 0;
+    m->flags         = META_FLAG_VALID;
+    m->checksum      = metadata_checksum(m);
+}
+
+static int metadata_try_load(uint16_t addr, boot_metadata_t *m)
+{
+    if (eeprom_read(addr, (uint8_t *)m, sizeof(*m)) != EEPROM_OK)
+        return -1;
+    if (m->magic != BOOT_METADATA_MAGIC)
+        return -1;
+
+    if (m->version != BOOT_METADATA_VERSION)
+        return -1;
+
+    if (m->length != sizeof(*m))
+        return -1;
+
+    if (m->checksum != metadata_checksum(m))
+        return -1;
+
+    return 0;
+}
+
+int boot_metadata_load_or_init(boot_metadata_t *meta)
+{
+    boot_metadata_t m0, m1;
+    int v0 = metadata_try_load(METADATA_SLOT0_ADDR, &m0);
+    int v1 = metadata_try_load(METADATA_SLOT1_ADDR, &m1);
+
+    uint32_t baseA = APP_SLOT_A_BASE;
+    uint32_t baseB = APP_SLOT_B_BASE;
+
+    bool A_vec_ok = (image_validate_vector(baseA) == IMG_OK);
+    bool B_vec_ok = (image_validate_vector(baseB) == IMG_OK);
+
+    /* ---------------------- CASE 1 ---------------------- *
+     * No slot has metadata
+     * → fresh device / first flash scenario                */
+    if (v0 != 0 && v1 != 0)
+    {
+        uart_puts("No valid metadata -> Initializing defaults\r\n");
+        boot_metadata_default(meta);
+        meta->active_slot = SLOT_A;       // Prefer Slot-A always at first boot
+        meta->checksum = metadata_checksum(meta);
+        boot_metadata_store_safe(meta);
+        return 0;
+    }
+
+    /* ---------------------- CASE 2 ---------------------- *
+     * Only slot0 metadata valid                            */
+    if (v0 == 0 && v1 != 0)
+    {
+        uart_puts("Metadata: Using Slot0\r\n");
+        *meta = m0;
+
+        /* If Slot0 image invalid → force Switch to Slot1   */
+        if (!A_vec_ok && B_vec_ok) {
+            uart_puts("Slot0 image invalid → switching to Slot1\r\n");
+            meta->active_slot = SLOT_B;
+            boot_metadata_store_safe(meta);
+        }
+        return 0;
+    }
+
+    /* ---------------------- CASE 3 ---------------------- *
+     * Only slot1 metadata valid                            */
+    if (v1 == 0 && v0 != 0)
+    {
+        uart_puts("Metadata: Using Slot1\r\n");
+        *meta = m1;
+
+        if (!B_vec_ok && A_vec_ok) {
+            uart_puts("Slot1 image invalid → switching to Slot0\r\n");
+            meta->active_slot = SLOT_A;
+            boot_metadata_store_safe(meta);
+        }
+        return 0;
+    }
+
+    /* ---------------------- CASE 4 ---------------------- *
+     * Both metadata valid → Choose best slot               */
+    uart_puts("Both metadata slots valid -> Comparing...\r\n");
+
+    /* 1) Prefer slot with executable vector */
+    if (A_vec_ok && !B_vec_ok) {
+        uart_puts("SlotA valid image -> Using SlotA\r\n");
+        *meta = m0;  meta->active_slot = SLOT_A;
+    }
+    else if (!A_vec_ok && B_vec_ok) {
+        uart_puts("SlotB valid image -> Using SlotB\r\n");
+        *meta = m1;  meta->active_slot = SLOT_B;
+    }
+    else
+    {
+        /* 2) Both executable → use stored active_slot field */
+        if (m1.image_crc != 0 && m0.image_crc == 0) {
+            uart_puts("Slot1 has CRC; Slot0 not -> Using Slot1\r\n");
+            *meta = m1; meta->active_slot = SLOT_B;
+        }
+        else if (m0.image_crc != 0 && m1.image_crc == 0) {
+            uart_puts("Slot0 has CRC; Slot1 not -> Using Slot0\r\n");
+            *meta = m0; meta->active_slot = SLOT_A;
+        }
+        else if (m1.checksum > m0.checksum) {
+            uart_puts("Slot1 newer -> Using Slot1\r\n");
+            *meta = m1; meta->active_slot = SLOT_B;
+        }
+        else {
+            uart_puts("Slot0 newer -> Using Slot0\r\n");
+            *meta = m0; meta->active_slot = SLOT_A;
+        }
+    }
+
+    boot_metadata_store_safe(meta);
+    return 0;
+}
+
+int boot_metadata_store_safe(const boot_metadata_t *meta)
+{
+    boot_metadata_t tmp;
+
+    /* Determine which slot is currently valid */
+    int slot0_valid = (metadata_try_load(METADATA_SLOT0_ADDR, &tmp) == 0);
+    int target_addr = slot0_valid ? METADATA_SLOT1_ADDR
+                                  : METADATA_SLOT0_ADDR;
+
+    /* Prepare checksum */
+    boot_metadata_t m = *meta;
+    m.checksum = metadata_checksum(&m);
+
+    /* Write to inactive slot */
+    return eeprom_write(target_addr,
+                        (const uint8_t *)&m,
+                        sizeof(m));
+}
+
+void boot_metadata_dump(const boot_metadata_t *m) {
+	uart_puts("METADATA DUMP\r\n");
+	uart_puts(" Active slot: ");
+	uart_putc(m->active_slot + 'A');
+	uart_puts("\r\n");
+	uart_puts(" Boot attempts: ");
+	uart_putc('0' + m->boot_attempts);
+	uart_puts("\r\n");
+	uart_puts(" Fault count: ");
+	uart_putc('0' + m->fault_count);
+	uart_puts("\r\n"); uart_puts(" Flags: 0x");
+	for (int i = 28; i >= 0; i -= 4) {
+		uint8_t n = (m->flags >> i) & 0xF;
+        uart_putc(n < 10 ? '0' + n : 'A' + n - 10);
+	  }
+	       uart_puts("\r\n");
+}

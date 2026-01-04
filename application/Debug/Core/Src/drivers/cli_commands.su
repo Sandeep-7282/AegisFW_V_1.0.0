@@ -1,0 +1,12 @@
+../Core/Src/drivers/cli_commands.c:38:13:cli_print_help	8	static
+../Core/Src/drivers/cli_commands.c:66:13:cmd_sys	152	static
+../Core/Src/drivers/cli_commands.c:82:13:cmd_tasks	8	static
+../Core/Src/drivers/cli_commands.c:88:13:cmd_heap	72	static
+../Core/Src/drivers/cli_commands.c:97:13:cmd_uptime	72	static
+../Core/Src/drivers/cli_commands.c:108:13:cmd_fault_dump	144	static
+../Core/Src/drivers/cli_commands.c:129:13:cmd_fault_clear	8	static
+../Core/Src/drivers/cli_commands.c:135:13:cmd_reset_info	80	static
+../Core/Src/drivers/cli_commands.c:148:13:cmd_adc	144	static
+../Core/Src/drivers/cli_commands.c:166:13:cmd_oled	56	static
+../Core/Src/drivers/cli_commands.c:195:13:cmd_sensor	24	static
+../Core/Src/drivers/cli_commands.c:218:6:cli_dispatch	24	static

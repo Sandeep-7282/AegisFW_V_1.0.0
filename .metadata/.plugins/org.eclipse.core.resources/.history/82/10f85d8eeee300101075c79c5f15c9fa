@@ -1,0 +1,18 @@
+/*
+ * task_oled.h
+ *
+ *  Created on: Dec 27, 2025
+ *      Author: sande
+ */
+
+#ifndef INC_RTOS_TASK_OLED_H_
+#define INC_RTOS_TASK_OLED_H_
+
+typedef struct {
+    uint8_t row;
+    char text[22];
+} oled_msg_t;
+
+void OLED_Task(void *arg);
+
+#endif /* INC_RTOS_TASK_OLED_H_ */

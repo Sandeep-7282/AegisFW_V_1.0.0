@@ -1,0 +1,43 @@
+#include "board.h"
+#include "uart.h"
+#include "drivers.h"
+#include "tasks.h"
+#include "FreeRTOS.h"
+#include "task.h"
+
+TaskHandle_t sensorTaskHandle;
+
+
+#define APP_SLOT_A_BASE        0x0800C000UL
+//#define APP_SLOT_B_BASE        0x0803E000UL
+#define APP_SLOT_SIZE_BYTES   (200UL * 1024UL)
+
+#if defined(APP_SLOT_A_BASE)
+    #define APP_BASE_ADDR  APP_SLOT_A_BASE
+#elif defined(APP_SLOT_B_BASE)
+    #define APP_BASE_ADDR  APP_SLOT_B_BASE
+#endif
+
+static void VectorTable_Remap(void)
+{
+    SCB->VTOR = APP_BASE_ADDR;
+    __DSB(); __ISB();
+}
+
+int main(void)
+{
+	VectorTable_Remap();
+    uart_init();
+    uart_puts("\r\n=== AEGISFW DAY-6 ===\r\n");
+
+    //board_init();                 // GPIO + EXTI + TIM + ADC + DMA
+    oled_init();                  // Initialize OLED before RTOS
+    oled_clear();
+    oled_print(0,0,"AEGISFW ONLINE");
+    oled_print(0,2,"BOOT OK");
+
+    xTaskCreate(sensor_task,"SENSOR",512,NULL,2,&sensorTaskHandle);
+
+    vTaskStartScheduler();
+    while(1);
+}

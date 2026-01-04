@@ -1,0 +1,24 @@
+/* application/Core/main.c */
+#include "FreeRTOS.h"
+#include "task.h"
+#include "freertos_init.h"
+#include "uart_driver.h"
+#include "gpio_driver.h"
+#include "gpio_exti.h"
+
+int main(void)
+{
+
+    uart_init(115200);
+    gpio_init_led();
+    adc1_init_temp_vref_dma();
+    dma2_adc1_init();
+    GPIO_EXTI_Init();
+    uart_send_str("\r\n[AegisFW-APP] Boot OK\r\n");
+
+    rtos_start();              // vTaskStartScheduler inside
+
+    while(1);
+}
+
+
